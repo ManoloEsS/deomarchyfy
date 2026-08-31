@@ -29,11 +29,18 @@ the installation. Installer labels and defaults can change.
 - Boot the installer in UEFI mode. Confirm this from the firmware menu rather
   than assuming the boot mode.
 - Use GPT for a UEFI installation.
-- For a single-user machine, prefer full-disk LUKS2 encryption unless there is
-  a specific need for unattended boot.
-- Prefer Btrfs with a documented snapshot layout when snapshots and recovery are
-  part of the maintenance plan. Use ext4 instead when a simple, low-maintenance
-  filesystem is more important than snapshots.
+- Disable Secure Boot unless you have a separately tested signing setup.
+- Disable CSM/legacy boot when possible.
+- The current Calamares configuration defaults to ext4 and systemd-boot. For
+  this project, select **Btrfs** because snapshots and rollback are part of the
+  intended recovery design. Use the installer's Btrfs subvolume layout and
+  record it before confirming the installation.
+- Btrfs snapshots are not automatically backups. Choose and document a snapshot
+  tool, schedule, retention policy, and restore procedure after the first boot.
+- The current Calamares source specifies LUKS1. Verify the encryption generation
+  shown by the installer before accepting it; do not assume the installer is
+  creating LUKS2. Use a manual, separately documented procedure if LUKS2 is a
+  hard requirement.
 - Do not create a separate `/home` filesystem merely by habit. With Btrfs,
   choose subvolumes deliberately so root rollback does not unexpectedly include
   or exclude user data.
@@ -42,10 +49,13 @@ the installation. Installer labels and defaults can change.
   resume configuration in the initramfs and kernel command line.
 - Keep the EFI System Partition outside the encrypted container and do not
   format an existing EFI partition without confirming that it is safe.
+- Current installer guidance recommends a 2 GiB EFI partition for systemd-boot
+  and accepts 500 MiB as the minimum. GRUB uses a smaller `/boot/efi` layout.
 
 ### Bootloader
 
-- Prefer systemd-boot for a straightforward single-OS UEFI machine.
+- Prefer systemd-boot for a straightforward single-OS UEFI machine. It is the
+  current installer default.
 - Prefer GRUB when multi-boot detection, legacy firmware support, or a more
   flexible boot menu is required.
 - Record the selected bootloader and disk layout. Future recovery instructions
@@ -53,8 +63,14 @@ the installation. Installer labels and defaults can change.
 
 ### Installer Profile
 
-- Choose the smallest profile that provides the required network and hardware
-  support. Do not install a second full desktop environment.
+- Use **Online installation**. EndeavourOS documents Offline installation as a
+  fallback; it installs ISO-time packages and currently offers only KDE/Plasma.
+- For this project's minimal target, choose **No Desktop**. The system will boot
+  to text mode after installation, and we install Hyprland and Noctalia in the
+  controlled post-install phase.
+- Do not select GNOME, KDE, Xfce, Cinnamon, COSMIC, Budgie, LXQt, or Sway-WM for
+  the minimal target. Selecting GNOME installs a complete desktop and GDM; it is
+  not just a hardware or GTK compatibility layer.
 - Create the normal user account during installation and use it for Stow and
   AUR work. Do not use root for user configuration.
 - Enable networking in the installer if needed, but treat it as a first-boot
@@ -65,7 +81,142 @@ the installation. Installer labels and defaults can change.
   package command.
 
 After reboot, confirm that the system boots from the intended disk and that the
-normal user can reach a TTY. Do not enable the new graphical login service yet.
+normal user can reach a TTY. With **No Desktop**, no display manager should be
+running yet. If GNOME was selected as a fallback, expect GDM to be installed;
+disable it before enabling the repository's greetd path.
+
+## EndeavourOS Installer Selections
+
+The following recommendations are based on the current official online
+installer sources. The `main` branch of the ISO repository is development
+state, so verify labels and default states in the exact ISO being used.
+
+### Final Non-Package Choices
+
+| Installer item | Final choice | Notes |
+| --- | --- | --- |
+| Installation method | **Online** | Provides current packages and the full selection screen |
+| Desktop environment | **No Desktop** | Hyprland and Noctalia are installed after the first boot |
+| Filesystem | **Btrfs** | Use the installer's subvolume layout and record it |
+| Encrypt system | **Checked** | Encrypt the system/root volume; leave the EFI System Partition unencrypted |
+| Bootloader | **systemd-boot** | UEFI + GPT, single EndeavourOS installation |
+| Swap | **None** | Use zram later; add disk swap only if hibernation becomes a requirement |
+| Automatic login | **Disabled** | Require the normal user password at Noctalia Greeter |
+
+The resulting boot flow is intentionally:
+
+```text
+disk-encryption password -> Noctalia Greeter -> user password -> Hyprland
+```
+
+The encryption password unlocks the disk; it does not authenticate the user.
+Keep the two passwords separate. Do not configure TPM auto-unlock or display
+manager autologin initially. Omarchy's single-password startup is achieved by
+SDDM autologin after disk unlock; that is a convenience choice and is not the
+login behavior selected for this system.
+
+### Recommended for This Project
+
+| Installer item | Selection | Reason |
+| --- | --- | --- |
+| Installation method | **Online** | Current packages, all desktop choices, and package deselection |
+| Desktop | **No Desktop** | Avoids a competing desktop and display manager |
+| Desktop-Base + Common packages | **Checked** | Keeps the required base integration |
+| X11 subgroup | **Unchecked** | This is a Wayland-first setup; add `xorg-xwayland` later if needed |
+| Network | **Checked** | NetworkManager, OpenSSH, Wi-Fi support, and networking tools |
+| Package management | **Checked** | `yay` and useful Arch maintenance tools |
+| Desktop integration | **Checked** | D-Bus, Bluetooth packages, media codecs, `xdg-utils`, and user directories |
+| Filesystem | **Checked** | Firmware/EFI and common filesystem utilities |
+| Fonts | **Checked** | Basic font coverage for desktop applications |
+| Audio | **Checked** | PipeWire, WirePlumber, ALSA, and audio support |
+| Hardware | **Checked** | Hardware detection, firmware-related tools, and diagnostics |
+| Power | **Checked** | `power-profiles-daemon` and UPower |
+| EndeavourOS applications | **Checked** | Keep EOS logging, package inventory, and mirror-management tools |
+| Recommended applications | **Checked** | Git, rsync, glances, hardware information, and useful maintenance tools |
+| Firefox and language package | **Checked** | Firefox is part of the selected workstation inventory |
+| Spell Checker and language package | **Unchecked** | Not required by the planned minimal setup |
+| Firewall | **Checked** | Installs and enables Firewalld |
+| LTS kernel in addition | **Unchecked** | Add only for a known hardware or regression reason |
+| Printing support | **Unchecked** | No printer requirement has been selected |
+| HP printer/scanner support | **Unchecked** | No HP device requirement has been selected |
+
+If individual packages can be deselected inside **EndeavourOS applications**, the
+selected tools to retain are `eos-log-tool`, `eos-packagelist`, `eos-rankmirrors`,
+and `reflector-simple`. `endeavouros-branding`, `eos-apps-info`, `eos-quickstart`,
+and `welcome` are optional cosmetic or onboarding items.
+
+Keep `xdg-utils` and `xdg-user-dirs` from Desktop integration. Install and keep
+`xdg-desktop-portal` and `xdg-desktop-portal-hyprland` in the post-install package
+phase. These XDG packages are required desktop integration and are unrelated to
+the optional X11 subgroup.
+
+`nautilus` is also installed in the post-install package phase. It does not
+require selecting the GNOME desktop, GNOME Shell, or GDM.
+
+Keep the common subgroups checked unless there is a specific reason to remove
+their individual packages. The installer groups contain some optional tools, but
+removing an entire subgroup can remove dependencies needed for networking,
+audio, portals, hardware, or power management.
+
+### If GNOME Is Required as a Fallback
+
+If "use GNOME" means keeping a complete GNOME session available in addition to
+Hyprland, select **GNOME** instead of **No Desktop**. This is a valid but less
+minimal choice. The GNOME profile currently installs:
+
+```text
+adwaita-icon-theme loupe evince file-roller gdm
+gnome-calculator gnome-clocks gnome-console gnome-control-center
+gnome-disk-utility gnome-keyring gnome-nettool gnome-power-manager
+gnome-shell gnome-system-monitor gnome-terminal gnome-text-editor
+gnome-themes-extra gnome-tweaks gnome-usage gnome-weather
+gvfs gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs gvfs-smb
+nautilus sushi showtime xdg-desktop-portal-gnome
+xdg-desktop-portal xdg-user-dirs-gtk
+```
+
+For that option:
+
+- Keep the GNOME desktop package group selected.
+- Uncheck the GNOME **EndeavourOS settings** subgroup for vanilla GNOME. It
+  contains `arc-gtk-theme-eos`, `eos-settings-gnome`, and `eos-qogir-icons`.
+- Do not select another desktop environment or Sway-WM.
+- Expect `gdm.service` to be enabled by the GNOME installation.
+- Before enabling our `greetd` path, disable GDM and confirm that only one login
+  manager owns the graphical target:
+
+  ```bash
+  sudo systemctl disable --now gdm.service
+  ```
+
+- Keep the GNOME portal initially only if GNOME applications need it. Test
+  portal selection before adding another portal backend.
+
+GNOME does not replace Hyprland or Noctalia, but installing it adds a second
+desktop shell, display manager, application set, and portal backend. It should
+be treated as an intentional fallback, not as a minimal base.
+
+### Installer Defaults That Need Post-Install Attention
+
+The current EndeavourOS service configuration attempts to enable installed units
+including NetworkManager, Firewalld, power profiles, `fstrim.timer`, and the
+selected desktop's display manager. It explicitly disables Bluetooth by default.
+The installer package list includes `openssh`, but it does not enable
+`sshd.service`; this repository enables SSH separately after key setup.
+
+Do not confuse the live ISO package list with the installed profile. The current
+live ISO itself is KDE-based; the online GNOME package list is separate.
+
+### Official Research Sources
+
+- [EndeavourOS live ISO installation guidance](https://discovery.endeavouros.com/installation/live-iso-tricks-tips/2021/03/)
+- [EndeavourOS installer customization](https://discovery.endeavouros.com/installation/customizing-the-endeavouros-install-process/2022/03/)
+- [Current desktop chooser](https://raw.githubusercontent.com/endeavouros-team/calamares/calamares/data/eos/modules/packagechooser.conf)
+- [Current online package groups](https://raw.githubusercontent.com/endeavouros-team/calamares/calamares/data/eos/modules/netinstall.yaml)
+- [Current service handling](https://raw.githubusercontent.com/endeavouros-team/calamares/calamares/data/eos/modules/services-systemd.conf)
+- [Current display-manager handling](https://raw.githubusercontent.com/endeavouros-team/calamares/calamares/data/eos/modules/displaymanager.conf)
+- [Current partition defaults](https://raw.githubusercontent.com/endeavouros-team/calamares/calamares/data/eos/modules/partition.conf)
+- [Official GNOME notes](https://discovery.endeavouros.com/desktop-environments/gnome-desktop/2024/09/)
 
 ## Phase 2: First Boot Baseline
 
@@ -87,7 +238,7 @@ sudo pacman -S --needed \
   less nautilus openssh pipewire pipewire-alsa pipewire-jack pipewire-pulse \
   polkit power-profiles-daemon python-gobject rsync starship stow tmux upower \
   wireplumber ttf-jetbrains-mono-nerd xdg-desktop-portal \
-  xdg-desktop-portal-hyprland xdg-utils zoxide
+  xdg-desktop-portal-hyprland xdg-utils zram-generator zoxide
 ```
 
 Omit packages already provided by the selected EndeavourOS profile. `--needed`
@@ -137,6 +288,7 @@ already enabled by EndeavourOS; repeating `enable --now` is harmless.
 sudo systemctl enable --now NetworkManager.service
 sudo systemctl enable --now firewalld.service
 sudo systemctl enable --now power-profiles-daemon.service
+sudo systemctl enable --now sshd.service
 sudo systemctl enable --now tailscaled.service
 ```
 
@@ -171,18 +323,31 @@ tailscale status
 ### Firewall
 
 The kernel's packet filtering support is not an application firewall policy.
-This setup uses firewalld with the `public` zone and no unnecessary incoming
-services:
+This setup uses firewalld with the `home` zone because the machine will remain
+on a trusted home network. Services are still allow-listed rather than opened
+automatically:
 
 ```bash
-sudo firewall-cmd --set-default-zone=public
+sudo firewall-cmd --set-default-zone=home
 firewall-cmd --get-default-zone
 firewall-cmd --get-active-zones
-firewall-cmd --list-all --zone=public
+firewall-cmd --list-all --zone=home
 ```
 
-Add an allowed service or port only when that service is intentionally enabled.
-For example, do not expose SSH just because `openssh` is installed.
+SSH is intentionally enabled in this setup. Before enabling remote access,
+install the user's public key in `~/.ssh/authorized_keys`. Then start `sshd`,
+allow the service through firewalld, and verify key-based login from a second
+machine:
+
+```bash
+sudo firewall-cmd --permanent --zone=home --add-service=ssh
+sudo firewall-cmd --reload
+firewall-cmd --list-services --zone=home
+```
+
+If SSH is not needed on a particular machine, skip `sshd.service` and do not
+add the firewall service. Do not expose any other incoming service merely
+because its package is installed.
 
 ### Portals and Authentication
 
@@ -354,6 +519,7 @@ command -v ghostty eos-hwtool herdr jj nvim tmux
 systemctl is-enabled NetworkManager.service
 systemctl is-active firewalld.service
 systemctl is-active power-profiles-daemon.service
+systemctl is-enabled sshd.service
 firewall-cmd --state
 powerprofilesctl get
 wpctl status

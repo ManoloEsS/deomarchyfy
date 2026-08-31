@@ -15,15 +15,17 @@ is especially important for AUR packages and rapidly changing developer tools.
 
 ## EndeavourOS Baseline
 
-These are the baseline tools and services expected from the selected EndeavourOS
-installation profile:
+These are the baseline tools and services expected when the recommended Online
+installer selections are kept (`No Desktop` plus the common package groups).
+They are profile-dependent; check what is already installed before adding them
+again during Phase 2 of the installation runbook:
 
 | Component | Package or command | Purpose |
 | --- | --- | --- |
 | Browser | `firefox` | Free and open-source web browser |
 | Package manager | `pacman` | Official Arch and EndeavourOS package management; already part of the system |
 | AUR helper | `yay` | Builds and installs packages from the Arch User Repository |
-| Firewall | `firewalld` | Host firewall using the default `public` zone |
+| Firewall | `firewalld` | Host firewall using the default `home` zone |
 | Multimedia | `pipewire`, `pipewire-pulse`, `pipewire-alsa`, `pipewire-jack`, `wireplumber` | Audio and video capture, playback, and compatibility layers |
 | Hardware tool | `eos-hwtool` | EndeavourOS hardware, VM-driver, and GPU-driver management |
 | Initramfs | `dracut` | Builds initramfs images |
@@ -110,6 +112,7 @@ workflow:
 | `xdg-utils` | Provides `xdg-open` for the Bash `open` helper |
 | `util-linux` | Provides `eject`, `col`, and `setsid`; normally part of the base system |
 | `ttf-jetbrains-mono-nerd` | Font used by Ghostty and terminal applications |
+| `zram-generator` | Creates compressed zram swap devices for non-hibernating systems |
 | `inotify-tools` | File-change notifications for `rsw` |
 | `rsync` | Directory synchronization for `rsw` |
 | `openssh` | `scp` and SSH transport for `sff` and `rsw` |
@@ -136,7 +139,7 @@ sudo pacman -S --needed \
   pipewire pipewire-alsa pipewire-jack pipewire-pulse polkit \
   power-profiles-daemon python-gobject rsync starship stow tmux upower wireplumber \
   ttf-jetbrains-mono-nerd xdg-desktop-portal xdg-desktop-portal-hyprland \
-  xdg-utils zoxide
+  xdg-utils zram-generator zoxide
 ```
 
 Install AUR packages only after `yay` is available, and verify the package
@@ -159,6 +162,7 @@ sudo systemctl enable --now firewalld.service
 sudo systemctl enable --now NetworkManager.service
 sudo systemctl enable --now bluetooth.service
 sudo systemctl enable --now power-profiles-daemon.service
+sudo systemctl enable --now sshd.service
 sudo systemctl enable --now tailscaled.service
 ```
 
@@ -181,19 +185,33 @@ systemctl --user status pipewire pipewire-pulse wireplumber
 
 EndeavourOS/Arch provides the kernel packet-filtering framework, but a firewall
 manager is not automatically enabled merely because the operating system is
-installed. This setup uses `firewalld` and its `public` zone.
+installed. This setup uses `firewalld` and its `home` zone because the machine
+will remain on a trusted home network. Services are still allow-listed rather
+than opened automatically.
 
 Verify the active zone after enabling it:
 
 ```bash
-sudo firewall-cmd --set-default-zone=public
+sudo firewall-cmd --set-default-zone=home
 firewall-cmd --get-default-zone
 firewall-cmd --get-active-zones
-firewall-cmd --list-all --zone=public
+firewall-cmd --list-all --zone=home
 ```
 
-The initial policy should expose no unnecessary incoming services. Add ports
-only when a service such as SSH is intentionally enabled.
+SSH is intentionally enabled in this setup. Before enabling remote access,
+install the user's public key in `~/.ssh/authorized_keys`. Then start `sshd`,
+allow the service through firewalld, and verify key-based login from a second
+machine:
+
+```bash
+sudo firewall-cmd --permanent --zone=home --add-service=ssh
+sudo firewall-cmd --reload
+firewall-cmd --list-services --zone=home
+```
+
+If SSH is not needed on a particular machine, skip `sshd.service` and do not
+add the firewall service. Do not expose any other incoming service merely
+because its package is installed.
 
 ## Optional Services
 

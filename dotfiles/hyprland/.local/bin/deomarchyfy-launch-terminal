@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly HOME_DIR="${HOME:?HOME must be set}"
+
+find_shell_cwd() {
+  local parent="$1"
+  local child shell candidate
+
+  while read -r child; do
+    [[ -d "/proc/${child}" ]] || continue
+
+    shell="$(readlink -f "/proc/${child}/exe" 2>/dev/null || true)"
+    if [[ -n "$shell" ]] && grep -Fqsx "$shell" /etc/shells; then
+      candidate="$(readlink -f "/proc/${child}/cwd" 2>/dev/null || true)"
+      if [[ -d "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    fi
+
+    if find_shell_cwd "$child"; then
+      return 0
+    fi
+  done < <(pgrep -P "$parent" 2>/dev/null || true)
+
+  return 1
+}
+
+active_window="$(hyprctl activewindow 2>/dev/null || true)"
+active_pid="$(awk '$1 == "pid:" { print $2; exit }' <<<"$active_window")"
+active_class="$(awk '$1 == "class:" { $1 = ""; sub(/^ /, ""); print; exit }' <<<"$active_window")"
+
+# Ghostty tracks the focused surface's CWD from shell integration. Let its
+# native new-window action use that value instead of guessing from /proc.
+if [[ "$active_class" == "com.mitchellh.ghostty" ]]; then
+  exec ghostty +new-window
+fi
+
+cwd="$HOME_DIR"
+if [[ "$active_pid" =~ ^[0-9]+$ ]]; then
+  cwd="$(find_shell_cwd "$active_pid" || true)"
+fi
+[[ -d "$cwd" ]] || cwd="$HOME_DIR"
+
+exec ghostty +new-window --working-directory="$cwd"

@@ -1,0 +1,69 @@
+# Portable Bash setup for the curated workstation.
+
+# Environment used by interactive tools and non-interactive editor commands.
+export EDITOR="nvim"
+export VISUAL="nvim"
+export GIT_EDITOR="nvim"
+export SUDO_EDITOR="nvim"
+export BAT_THEME="ansi"
+export MANROFFOPT="-c"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+
+# Keep user-installed binaries available without depending on Omarchy paths.
+case ":${PATH}:" in
+  *":${HOME}/.local/bin:"*) ;;
+  *) PATH="${PATH:+${PATH}:}${HOME}/.local/bin" ;;
+esac
+
+case ":${PATH}:" in
+  *":${HOME}/.local/share/mise/shims:"*) ;;
+  *) PATH="${PATH:+${PATH}:}${HOME}/.local/share/mise/shims" ;;
+esac
+export PATH
+
+# Rustup is optional, but its tools should be available when installed.
+[[ -r "${HOME}/.cargo/env" ]] && source "${HOME}/.cargo/env"
+
+# Mirror the system locale for remote/non-login shells that did not receive it.
+if [[ -z "${LANG:-}" ]]; then
+  [[ -r /etc/locale.conf ]] && source /etc/locale.conf
+  : "${LANG:=C.UTF-8}"
+  export LANG LANGUAGE LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY \
+    LC_MESSAGES LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT \
+    LC_IDENTIFICATION
+fi
+
+# Do not load interactive configuration into scripts or command substitutions.
+[[ $- != *i* ]] && return
+
+shopt -s histappend
+HISTCONTROL="ignoreboth"
+HISTSIZE=32768
+HISTFILESIZE="${HISTSIZE}"
+
+if [[ ! -v BASH_COMPLETION_VERSINFO && -f /usr/share/bash-completion/bash_completion ]]; then
+  source /usr/share/bash-completion/bash_completion
+fi
+
+# Avoid stale executable paths when mise changes the active tool.
+set +h
+
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate bash)"
+fi
+
+if [[ ${TERM:-} != "dumb" ]] && command -v starship >/dev/null 2>&1; then
+  eval "$(starship init bash)"
+fi
+
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init bash)"
+fi
+
+if command -v fzf >/dev/null 2>&1; then
+  [[ -f /usr/share/fzf/completion.bash ]] && source /usr/share/fzf/completion.bash
+  [[ -f /usr/share/fzf/key-bindings.bash ]] && source /usr/share/fzf/key-bindings.bash
+fi
+
+[[ -r "${HOME}/.bash_aliases" ]] && source "${HOME}/.bash_aliases"
+[[ -r "${HOME}/.bash_functions" ]] && source "${HOME}/.bash_functions"

@@ -84,7 +84,7 @@ for display_manager in gdm.service sddm.service lightdm.service lxdm.service; do
 done
 
 printf -v config_contents \
-  '[default_session]\ncommand = "%s"\nuser = "%s"\n' \
+  '[terminal]\nvt = 1\n\n[default_session]\ncommand = "%s"\nuser = "%s"\n' \
   "$SESSION_COMMAND" "$GREETER_USER"
 
 printf 'Greeter command: %s\n' "$GREETER_COMMAND"

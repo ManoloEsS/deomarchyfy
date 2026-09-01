@@ -96,8 +96,8 @@ Create `/etc/greetd/config.toml` as a root-owned machine configuration. Do not
 put this file in the user Stow packages because it contains the installed path,
 the system Greeter account, and machine-specific session choices. The guarded
 repository script discovers the installed wrapper and prints the proposed
-configuration. With no write or enable option it only validates and prints; it
-does not modify the system:
+configuration, including the target VT. With no write or enable option it only
+validates and prints; it does not modify the system:
 
 ```bash
 cd ~/src/deomarchyfy

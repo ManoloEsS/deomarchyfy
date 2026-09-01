@@ -323,8 +323,15 @@ The script does not enable `greetd`. Opt into additional services explicitly:
 
 The `--ssh` option refuses to start `sshd` until the user's
 `~/.ssh/authorized_keys` contains a key and then adds SSH to the Firewalld
-`home` zone. Tailscale authentication remains a separate `sudo tailscale up`
-step. Docker adds the user to a root-equivalent group and requires a new login.
+`home` zone. Use the following to install one supplied public key idempotently
+before enabling SSH; the option also implies `--ssh`:
+
+```bash
+./scripts/02-enable-services.sh --ssh-key-file /path/to/client.pub
+```
+
+Tailscale authentication remains a separate `sudo tailscale up` step. Docker
+adds the user to a root-equivalent group and requires a new login.
 
 PipeWire and WirePlumber belong to the user session. Do not create duplicate
 system services:

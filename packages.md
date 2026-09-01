@@ -164,8 +164,15 @@ Enable optional services explicitly:
 ```
 
 The `--ssh` option requires `~/.ssh/authorized_keys` to contain a public key and
-adds the SSH service to Firewalld's `home` zone. Tailscale authentication remains
-separate:
+adds the SSH service to Firewalld's `home` zone. To install one supplied public
+key idempotently before enabling SSH, run the following with the public-key file
+already present on the target:
+
+```bash
+./scripts/02-enable-services.sh --ssh-key-file /path/to/client.pub
+```
+
+This also implies `--ssh`. Tailscale authentication remains separate:
 
 ```bash
 sudo tailscale up

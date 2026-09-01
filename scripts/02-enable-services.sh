@@ -10,6 +10,7 @@ enable_tailscale=false
 enable_bluetooth=false
 enable_docker=false
 enable_accountsservice=false
+ssh_key_file=''
 
 usage() {
   printf 'Usage: %s [options]\n' "$SCRIPT_NAME"
@@ -21,6 +22,7 @@ usage() {
     'Options:' \
     '  --all              Also enable SSH, Tailscale, and Bluetooth' \
     '  --ssh              Enable sshd and allow SSH in firewalld home zone' \
+    '  --ssh-key-file PATH  Install a public key before enabling SSH' \
     '  --tailscale        Enable tailscaled (authentication remains separate)' \
     '  --bluetooth        Enable bluetooth.service' \
     '  --docker           Enable Docker and add the user to the docker group' \
@@ -81,6 +83,12 @@ while (($# > 0)); do
     --ssh)
       enable_ssh=true
       ;;
+    --ssh-key-file)
+      (($# > 1)) || die '--ssh-key-file requires a path'
+      ssh_key_file="$2"
+      enable_ssh=true
+      shift
+      ;;
     --tailscale)
       enable_tailscale=true
       ;;
@@ -123,8 +131,39 @@ enable_service fstrim.timer
 run_root firewall-cmd --set-default-zone=home
 
 if $enable_ssh; then
-  [[ -s "$USER_HOME/.ssh/authorized_keys" ]] || die \
-    'refusing to enable SSH until ~/.ssh/authorized_keys contains a key'
+  if [[ -n "$ssh_key_file" ]]; then
+    [[ -f "$ssh_key_file" ]] || die "SSH public-key file not found: $ssh_key_file"
+    command -v ssh-keygen >/dev/null 2>&1 || die 'ssh-keygen is not installed'
+
+    ssh_key_line=""
+    while IFS= read -r candidate; do
+      [[ -n "$candidate" && "$candidate" != \#* ]] || continue
+      ssh_key_line="$candidate"
+      break
+    done <"$ssh_key_file"
+    [[ -n "$ssh_key_line" ]] || die "SSH public-key file is empty: $ssh_key_file"
+    [[ "$ssh_key_line" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-|sk-ssh-|sk-ecdsa-)[[:space:]] ]] || die \
+      "not an SSH public-key line: $ssh_key_file"
+    ssh-keygen -lf "$ssh_key_file" >/dev/null 2>&1 || die \
+      "not a valid SSH public-key file: $ssh_key_file"
+
+    authorized_keys="$USER_HOME/.ssh/authorized_keys"
+    if $dry_run; then
+      printf '+ install public key into %s\n' "$authorized_keys"
+    else
+      install -d -m 0700 "$USER_HOME/.ssh"
+      touch "$authorized_keys"
+      chmod 0600 "$authorized_keys"
+      if ! grep -Fqx -- "$ssh_key_line" "$authorized_keys"; then
+        printf '%s\n' "$ssh_key_line" >>"$authorized_keys"
+      fi
+    fi
+  fi
+
+  if ! $dry_run || [[ -z "$ssh_key_file" ]]; then
+    [[ -s "$USER_HOME/.ssh/authorized_keys" ]] || die \
+      'refusing to enable SSH until ~/.ssh/authorized_keys contains a key'
+  fi
   enable_service sshd.service
   run_root firewall-cmd --permanent --zone=home --add-service=ssh
   run_root firewall-cmd --reload

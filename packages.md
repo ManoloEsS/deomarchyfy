@@ -182,11 +182,14 @@ tailscale ip
 
 The script intentionally does not enable `greetd`; it must be activated only
 after the Greeter and direct Hyprland session have been tested. PipeWire and
-WirePlumber are normally user-session services. Verify them from a graphical
-session rather than creating duplicate system services:
+WirePlumber are normally user-session services. The `pipewire-pulse.service`
+process may be inactive until its socket is used; verify the sockets and an
+actual audio client from a graphical session rather than creating duplicate
+system services:
 
 ```bash
-systemctl --user status pipewire pipewire-pulse wireplumber
+systemctl --user is-active pipewire wireplumber pipewire-pulse.socket
+wpctl status
 ```
 
 ## zram

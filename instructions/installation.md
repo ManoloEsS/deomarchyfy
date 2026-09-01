@@ -329,11 +329,13 @@ before enabling SSH; the option also implies `--ssh`:
 Tailscale authentication remains a separate `sudo tailscale up` step. Docker
 adds the user to a root-equivalent group and requires a new login.
 
-PipeWire and WirePlumber belong to the user session. Do not create duplicate
-system services:
+PipeWire and WirePlumber belong to the user session. The `pipewire-pulse.service`
+process may be inactive until its socket is used. Do not create duplicate system
+services; verify the sockets and an actual audio client instead:
 
 ```bash
-systemctl --user status pipewire pipewire-pulse wireplumber
+systemctl --user is-active pipewire wireplumber pipewire-pulse.socket
+wpctl status
 ```
 
 Tailscale authentication is a separate step after networking is working:

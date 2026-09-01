@@ -29,8 +29,9 @@ dotfiles/ghostty/   GNU Stow package for Ghostty configuration
 Run the numbered scripts in this order:
 
 1. `scripts/01-install-packages.sh` installs official packages.
-2. `scripts/02-enable-services.sh` enables the safe system-service baseline and
-   can configure zram and explicitly selected optional services.
+2. `scripts/02-enable-services.sh` enables the workstation service baseline,
+   including Tailscale, Bluetooth, and Docker, and can configure zram and
+   explicitly selected services such as SSH.
 3. `scripts/03-stow-configs.sh` applies user configuration and handles Bash conflicts.
 4. `scripts/04-install-noctalia-greeter.sh` builds and installs the pinned Greeter.
 5. `scripts/05-configure-greetd.sh` writes and optionally activates `greetd`.

@@ -303,18 +303,19 @@ zramctl
 
 The repository was cloned during Phase 2. Run the numbered service script rather
 than maintaining a second list of `systemctl` commands. If zram was not
-configured with the command above, its default action enables only the safe core
-services and sets the Firewalld default zone to `home`:
+configured with the command above, its default action enables the workstation
+core services, including Tailscale's daemon, Bluetooth, Docker, and the user's
+`docker` group, and sets the Firewalld default zone to `home`:
 
 ```bash
 ./scripts/02-enable-services.sh
 ```
 
-The script does not enable `greetd`. Opt into additional services explicitly:
+The script does not enable `greetd`. SSH and AccountsService remain explicit
+options:
 
 ```bash
-./scripts/02-enable-services.sh --ssh --tailscale --bluetooth
-./scripts/02-enable-services.sh --docker
+./scripts/02-enable-services.sh --ssh
 ./scripts/02-enable-services.sh --accountsservice
 ```
 
@@ -327,8 +328,9 @@ before enabling SSH; the option also implies `--ssh`:
 ./scripts/02-enable-services.sh --ssh-key-file /path/to/client.pub
 ```
 
-Tailscale authentication remains a separate `sudo tailscale up` step. Docker
-adds the user to a root-equivalent group and requires a new login.
+Tailscale authentication remains a separate `sudo tailscale up` step because it
+requires the user's tailnet identity. Docker adds the user to a root-equivalent
+group and requires a new login.
 
 PipeWire and WirePlumber belong to the user session. The `pipewire-pulse.service`
 process may be inactive until its socket is used. Do not create duplicate system

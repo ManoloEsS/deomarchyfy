@@ -11,9 +11,9 @@ compression-algorithm = zstd
 
 dry_run=false
 enable_ssh=false
-enable_tailscale=false
-enable_bluetooth=false
-enable_docker=false
+enable_tailscale=true
+enable_bluetooth=true
+enable_docker=true
 enable_accountsservice=false
 configure_zram=false
 ssh_key_file=''
@@ -22,11 +22,12 @@ usage() {
   printf 'Usage: %s [options]\n' "$SCRIPT_NAME"
   printf '\n'
   printf '%s\n' \
-    'Enables the safe core services by default:' \
+    'Enables the workstation core services by default:' \
     '  NetworkManager, firewalld (home zone), power-profiles-daemon, fstrim.timer' \
+    '  Tailscale daemon, Bluetooth, Docker (and the user docker group)' \
     '' \
     'Options:' \
-    '  --all              Also enable SSH, Tailscale, and Bluetooth' \
+    '  --all              Also enable SSH and AccountsService' \
     '  --ssh              Enable sshd and allow SSH in firewalld home zone' \
     '  --ssh-key-file PATH  Install a public key before enabling SSH' \
     '  --zram             Configure zram-generator for non-hibernating swap' \
@@ -103,8 +104,7 @@ while (($# > 0)); do
   case "$1" in
     --all)
       enable_ssh=true
-      enable_tailscale=true
-      enable_bluetooth=true
+      enable_accountsservice=true
       ;;
     --ssh)
       enable_ssh=true

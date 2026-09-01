@@ -148,18 +148,18 @@ distribution channels can change independently of the Arch package database.
 ## Services
 
 Run the service script as the normal user from the repository. Its default action
-enables NetworkManager, Firewalld with the `home` zone, power profiles, and the
-`fstrim.timer`:
+enables NetworkManager, Firewalld with the `home` zone, power profiles,
+`fstrim.timer`, the Tailscale daemon, Bluetooth, Docker, and the user's `docker`
+group:
 
 ```bash
 ./scripts/02-enable-services.sh
 ```
 
-Enable optional services explicitly:
+SSH and AccountsService remain explicit options:
 
 ```bash
-./scripts/02-enable-services.sh --ssh --tailscale --bluetooth
-./scripts/02-enable-services.sh --docker
+./scripts/02-enable-services.sh --ssh
 ./scripts/02-enable-services.sh --accountsservice
 ```
 
@@ -172,7 +172,8 @@ already present on the target:
 ./scripts/02-enable-services.sh --ssh-key-file /path/to/client.pub
 ```
 
-This also implies `--ssh`. Tailscale authentication remains separate:
+This also implies `--ssh`. Tailscale authentication remains separate because it
+requires the user's tailnet identity:
 
 ```bash
 sudo tailscale up
@@ -235,17 +236,17 @@ If SSH is not needed on a particular machine, skip `sshd.service` and do not
 add the firewall service. Do not expose any other incoming service merely
 because its package is installed.
 
-## Optional Services
+## Docker and Bluetooth
 
-Docker is installed for the `docker` shell shortcut but its daemon does not need
-to run unless containers are being used:
+Docker and Bluetooth are enabled by the default service setup. Docker adds the
+user to a root-equivalent group and requires a new login:
 
 ```bash
-./scripts/02-enable-services.sh --docker
+groups
 ```
 
-Log out and back in after adding the user to the `docker` group. The group grants
-root-equivalent control over the host through the Docker socket.
+Log out and back in after the service script adds the user to the `docker` group.
+Bluetooth pairing remains a user action through Noctalia or a Bluetooth client.
 
 If user avatars are wanted in Noctalia Greeter, install and enable
 `accountsservice` separately:

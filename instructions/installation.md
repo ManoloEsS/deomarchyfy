@@ -405,8 +405,10 @@ bash ghostty herdr hyprland tmux
 Before applying them, inspect and preserve any existing files that would
 conflict. The numbered Stow script handles Bash specially: identical default
 files are backed up automatically, customized Bash files are preserved and the
-Bash package is skipped, and unrelated conflicts still stop the run. Do not use
-`stow --adopt` here; it changes the repository from the target machine.
+Bash package is skipped, and unrelated conflicts still stop the run. On a clean
+target with only stock Bash skeletons, use `--replace-bash` to back them up and
+apply the repository Bash package. Do not use `stow --adopt` here; it changes the
+repository from the target machine.
 
 Run the safe preflight first:
 
@@ -417,7 +419,7 @@ Run the safe preflight first:
 If the output contains no unexpected conflicts, apply the packages:
 
 ```bash
-./scripts/03-stow-configs.sh
+./scripts/03-stow-configs.sh --replace-bash
 ```
 
 Use `--restow` after changing package contents or removing a managed file:

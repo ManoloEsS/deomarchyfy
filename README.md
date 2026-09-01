@@ -32,7 +32,8 @@ Run the numbered scripts in this order:
 2. `scripts/02-enable-services.sh` enables the workstation service baseline,
    including Tailscale, Bluetooth, and Docker, and can configure zram and
    explicitly selected services such as SSH.
-3. `scripts/03-stow-configs.sh` applies user configuration and handles Bash conflicts.
+3. `scripts/03-stow-configs.sh` applies user configuration and handles Bash conflicts;
+   use `--replace-bash` for a clean target's stock Bash files.
 4. `scripts/04-install-noctalia-greeter.sh` builds and installs the pinned Greeter.
 5. `scripts/05-configure-greetd.sh` writes and optionally activates `greetd`.
 

@@ -6,21 +6,23 @@ readonly DOTFILES="${ROOT}/dotfiles"
 readonly TARGET="${HOME:?HOME must be set}"
 
 declare -a packages=(bash ghostty herdr hyprland tmux)
-declare -a bash_identical_files=()
+declare -a bash_backup_files=()
 declare -a bash_conflicting_files=()
 custom_packages=false
 restow=false
 dry_run=false
 bash_skip=false
 bash_backup=false
+bash_replace=false
 
 usage() {
-  printf 'Usage: %s [--dry-run] [--restow] [package ...]\n' "${0##*/}"
+  printf 'Usage: %s [--dry-run] [--restow] [--replace-bash] [package ...]\n' "${0##*/}"
   printf '\nPackages default to: %s\n' "${packages[*]}"
   printf '%s\n' \
-    '  --dry-run  Show Stow changes without modifying $HOME' \
-    '  --restow   Recreate links and remove obsolete links' \
-    '  Bash defaults are backed up; customized Bash files are preserved and skipped' \
+    '  --dry-run       Show Stow changes without modifying $HOME' \
+    '  --restow        Recreate links and remove obsolete links' \
+    '  --replace-bash  Back up and replace existing Bash files' \
+    '  Bash defaults are preserved unless --replace-bash is supplied' \
     '  -h, --help Show this help'
 }
 
@@ -40,6 +42,9 @@ while (($# > 0)); do
       ;;
     --restow)
       restow=true
+      ;;
+    --replace-bash)
+      bash_replace=true
       ;;
     -h|--help)
       usage
@@ -131,8 +136,10 @@ inspect_bash_targets() {
       continue
     fi
 
-    if [[ -f "$target" ]] && cmp -s "$target" "$source"; then
-      bash_identical_files+=("$file")
+    if $bash_replace; then
+      bash_backup_files+=("$file")
+    elif [[ -f "$target" ]] && cmp -s "$target" "$source"; then
+      bash_backup_files+=("$file")
     else
       bash_conflicting_files+=("$file")
     fi
@@ -143,22 +150,26 @@ inspect_bash_targets() {
     printf 'warning: preserving customized Bash files and skipping bash Stow package:\n' >&2
     printf '  %s\n' "${bash_conflicting_files[*]}" >&2
     printf 'Resolve these files, then rerun this script to apply Bash.\n' >&2
-  elif ((${#bash_identical_files[@]} > 0)); then
+  elif ((${#bash_backup_files[@]} > 0)); then
     bash_backup=true
-    printf 'Bash files already match the repository and will be backed up before Stow:\n'
-    printf '  %s\n' "${bash_identical_files[*]}"
+    if $bash_replace; then
+      printf 'Existing Bash files will be backed up and replaced before Stow:\n'
+    else
+      printf 'Bash files already match the repository and will be backed up before Stow:\n'
+    fi
+    printf '  %s\n' "${bash_backup_files[*]}"
   fi
 }
 
-backup_identical_bash_files() {
+backup_bash_files() {
   local backup_dir file
 
   backup_dir="$TARGET/.config/deomarchyfy-backup/bash-$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$backup_dir"
-  for file in "${bash_identical_files[@]}"; do
+  for file in "${bash_backup_files[@]}"; do
     mv -- "$TARGET/$file" "$backup_dir/$file"
   done
-  printf 'Backed up matching Bash files to %s\n' "$backup_dir"
+  printf 'Backed up existing Bash files to %s\n' "$backup_dir"
 }
 
 if [[ " ${packages[*]} " == *' bash '* ]]; then
@@ -184,7 +195,11 @@ if $dry_run; then
   if $bash_skip; then
     printf 'Dry run complete; bash was skipped because customized files were preserved.\n'
   elif $bash_backup; then
-    printf 'Dry run complete; matching Bash files would be backed up before Stow.\n'
+    if $bash_replace; then
+      printf 'Dry run complete; existing Bash files would be backed up and replaced.\n'
+    else
+      printf 'Dry run complete; matching Bash files would be backed up before Stow.\n'
+    fi
   else
     printf 'Dry run complete; no files were changed.\n'
   fi
@@ -192,7 +207,7 @@ if $dry_run; then
 fi
 
 if $bash_backup; then
-  backup_identical_bash_files
+  backup_bash_files
 fi
 
 if ((${#packages[@]} == 0)); then

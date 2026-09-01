@@ -280,21 +280,27 @@ editor choice.
 
 ## Verification
 
-After installation, verify the important commands and services:
+After installation, verify the official-package commands and services. The
+repository verification script performs the same checks without changing the
+system:
 
 ```bash
-command -v ghostty
-command -v eos-hwtool
-command -v herdr
-command -v jj
-command -v nvim
-command -v opencode
-command -v tmux
+./scripts/06-verify-setup.sh
+```
+
+For individual checks, the official-package commands are:
+
+```bash
+command -v ghostty jj nvim tmux
 firewall-cmd --state
 powerprofilesctl get
 dracut --version
 wpctl status
 ```
+
+`eos-hwtool` is EndeavourOS-profile dependent. Herdr and OpenCode are installed
+through their separately documented upstream methods, so their absence from
+the official package transaction is not an installation-script failure.
 
 The direct Hyprland session, Noctalia startup, portal behavior, and the
 Hyprland keybindings are validated separately in `instructions/hyprland.md` and

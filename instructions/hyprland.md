@@ -194,6 +194,30 @@ configuration work will validate and document:
 - XWayland and portal behavior.
 - Noctalia v5 IPC actions, including the launcher panel toggle.
 
+### Compositor Animation Profile
+
+Hyprland compositor animations are owned by
+`dotfiles/hyprland/.config/hypr/looknfeel.lua`. The current profile uses the
+Omarchy v4.0.2 timing and curve values for window, border, layer, fade, and
+special-workspace transitions while leaving workspace changes instant. The
+profile is deliberately separate from Noctalia's shell animations: changing
+Noctalia tiles or panels does not change Hyprland window animations.
+
+After changing the Lua package, apply the links with Stow and reload Hyprland:
+
+```bash
+./scripts/03-stow-configs.sh --restow hyprland
+hyprctl reload
+hyprctl configerrors
+```
+
+Keep `animations` as a top-level Hyprland configuration section. Placing it
+inside `general` produces an `unknown config key 'general.animations.enabled'`
+error. Noctalia's separate animation control is managed by the reviewed Stow
+file at `~/.config/noctalia/config.toml`; the audited target currently has
+`[shell.animation] enabled = false`. GUI-managed values such as the shell speed
+remain in Noctalia's state file and are not part of the repository.
+
 The current Omarchy Hyprland files are reference material only. Do not copy
 Omarchy includes, generated state, wrappers, or paths into the new package.
 

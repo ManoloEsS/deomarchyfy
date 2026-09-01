@@ -5,25 +5,38 @@ readonly ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly DOTFILES="${ROOT}/dotfiles"
 readonly TARGET="${HOME:?HOME must be set}"
 
-declare -a packages=(bash ghostty herdr hyprland tmux)
+declare -a packages=(bash ghostty herdr hyprland noctalia starship tmux)
 declare -a bash_backup_files=()
 declare -a bash_conflicting_files=()
+declare -a noctalia_backup_files=()
+declare -a noctalia_conflicting_files=()
+declare -a starship_backup_files=()
+declare -a starship_conflicting_files=()
 custom_packages=false
 restow=false
 dry_run=false
 bash_skip=false
 bash_backup=false
 bash_replace=false
+noctalia_skip=false
+noctalia_backup=false
+noctalia_replace=false
+starship_skip=false
+starship_backup=false
+starship_replace=false
 
 usage() {
-  printf 'Usage: %s [--dry-run] [--restow] [--replace-bash] [package ...]\n' "${0##*/}"
+  printf 'Usage: %s [options] [package ...]\n' "${0##*/}"
   printf '\nPackages default to: %s\n' "${packages[*]}"
   printf '%s\n' \
     '  --dry-run       Show Stow changes without modifying $HOME' \
     '  --restow        Recreate links and remove obsolete links' \
     '  --replace-bash  Back up and replace existing Bash files' \
+    '  --replace-noctalia  Back up and replace existing Noctalia config' \
+    '  --replace-starship   Back up and replace existing Starship config' \
     '  Bash defaults are preserved unless --replace-bash is supplied' \
-    '  -h, --help Show this help'
+    '  Noctalia and Starship defaults are preserved unless their replace option is supplied' \
+    '  -h, --help       Show this help'
 }
 
 die() {
@@ -46,6 +59,12 @@ while (($# > 0)); do
     --replace-bash)
       bash_replace=true
       ;;
+    --replace-noctalia)
+      noctalia_replace=true
+      ;;
+    --replace-starship)
+      starship_replace=true
+      ;;
     -h|--help)
       usage
       exit 0
@@ -54,9 +73,6 @@ while (($# > 0)); do
       die "unknown option: $1"
       ;;
     *)
-      if [[ "$1" == 'noctalia' ]]; then
-        die 'Noctalia configuration is intentionally managed manually'
-      fi
       if ! $custom_packages; then
         packages=()
         custom_packages=true
@@ -172,13 +188,119 @@ backup_bash_files() {
   printf 'Backed up existing Bash files to %s\n' "$backup_dir"
 }
 
+inspect_noctalia_targets() {
+  local file target source
+
+  for file in config.toml; do
+    target="$TARGET/.config/noctalia/$file"
+    source="$DOTFILES/noctalia/.config/noctalia/$file"
+    [[ -e "$source" || -L "$source" ]] || continue
+    [[ -e "$target" || -L "$target" ]] || continue
+
+    if [[ -L "$target" ]] && [[ "$(readlink -f "$target")" == "$(readlink -f "$source")" ]]; then
+      continue
+    fi
+
+    if $noctalia_replace || { [[ -f "$target" ]] && cmp -s "$target" "$source"; }; then
+      noctalia_backup_files+=("$file")
+    else
+      noctalia_conflicting_files+=("$file")
+    fi
+  done
+
+  if ((${#noctalia_conflicting_files[@]} > 0)); then
+    noctalia_skip=true
+    printf 'warning: preserving customized Noctalia files and skipping noctalia Stow package:\n' >&2
+    printf '  %s\n' "${noctalia_conflicting_files[*]}" >&2
+    printf 'Resolve these files or use --replace-noctalia, then rerun this script.\n' >&2
+  elif ((${#noctalia_backup_files[@]} > 0)); then
+    noctalia_backup=true
+    if $noctalia_replace; then
+      printf 'Existing Noctalia files will be backed up and replaced before Stow:\n'
+    else
+      printf 'Noctalia files already match the repository and will be backed up before Stow:\n'
+    fi
+    printf '  %s\n' "${noctalia_backup_files[*]}"
+  fi
+}
+
+backup_noctalia_files() {
+  local backup_dir file
+
+  backup_dir="$TARGET/.config/deomarchyfy-backup/noctalia-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$backup_dir"
+  for file in "${noctalia_backup_files[@]}"; do
+    mv -- "$TARGET/.config/noctalia/$file" "$backup_dir/$file"
+  done
+  printf 'Backed up existing Noctalia files to %s\n' "$backup_dir"
+}
+
+inspect_starship_targets() {
+  local file target source
+
+  for file in starship.toml; do
+    target="$TARGET/.config/$file"
+    source="$DOTFILES/starship/.config/$file"
+    [[ -e "$source" || -L "$source" ]] || continue
+    [[ -e "$target" || -L "$target" ]] || continue
+
+    if [[ -L "$target" ]] && [[ "$(readlink -f "$target")" == "$(readlink -f "$source")" ]]; then
+      continue
+    fi
+
+    if $starship_replace || { [[ -f "$target" ]] && cmp -s "$target" "$source"; }; then
+      starship_backup_files+=("$file")
+    else
+      starship_conflicting_files+=("$file")
+    fi
+  done
+
+  if ((${#starship_conflicting_files[@]} > 0)); then
+    starship_skip=true
+    printf 'warning: preserving customized Starship files and skipping starship Stow package:\n' >&2
+    printf '  %s\n' "${starship_conflicting_files[*]}" >&2
+    printf 'Resolve these files or use --replace-starship, then rerun this script.\n' >&2
+  elif ((${#starship_backup_files[@]} > 0)); then
+    starship_backup=true
+    if $starship_replace; then
+      printf 'Existing Starship files will be backed up and replaced before Stow:\n'
+    else
+      printf 'Starship files already match the repository and will be backed up before Stow:\n'
+    fi
+    printf '  %s\n' "${starship_backup_files[*]}"
+  fi
+}
+
+backup_starship_files() {
+  local backup_dir file
+
+  backup_dir="$TARGET/.config/deomarchyfy-backup/starship-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$backup_dir"
+  for file in "${starship_backup_files[@]}"; do
+    mv -- "$TARGET/.config/$file" "$backup_dir/$file"
+  done
+  printf 'Backed up existing Starship files to %s\n' "$backup_dir"
+}
+
 if [[ " ${packages[*]} " == *' bash '* ]]; then
   inspect_bash_targets
+fi
+if [[ " ${packages[*]} " == *' noctalia '* ]]; then
+  inspect_noctalia_targets
+fi
+if [[ " ${packages[*]} " == *' starship '* ]]; then
+  inspect_starship_targets
 fi
 
 declare -a preflight_packages=()
 for package in "${packages[@]}"; do
   if [[ "$package" == 'bash' ]] && ($bash_skip || $bash_backup); then
+    continue
+  fi
+  if [[ "$package" == 'noctalia' ]] && ($noctalia_skip || $noctalia_backup); then
+    continue
+  fi
+  if [[ "$package" == 'starship' ]] && ($starship_skip || $starship_backup); then
     continue
   fi
   preflight_packages+=("$package")
@@ -203,11 +325,27 @@ if $dry_run; then
   else
     printf 'Dry run complete; no files were changed.\n'
   fi
+  if $noctalia_skip; then
+    printf 'Dry run note; noctalia was skipped because customized files were preserved.\n'
+  elif $noctalia_backup; then
+    printf 'Dry run note; existing Noctalia files would be backed up before Stow.\n'
+  fi
+  if $starship_skip; then
+    printf 'Dry run note; starship was skipped because customized files were preserved.\n'
+  elif $starship_backup; then
+    printf 'Dry run note; existing Starship files would be backed up before Stow.\n'
+  fi
   exit 0
 fi
 
 if $bash_backup; then
   backup_bash_files
+fi
+if $noctalia_backup; then
+  backup_noctalia_files
+fi
+if $starship_backup; then
+  backup_starship_files
 fi
 
 if ((${#packages[@]} == 0)); then
@@ -218,18 +356,34 @@ fi
 if $bash_skip; then
   declare -a apply_packages=()
   for package in "${packages[@]}"; do
-    [[ "$package" == 'bash' ]] || apply_packages+=("$package")
+    if [[ "$package" != 'bash' ]] && \
+       [[ "$package" != 'noctalia' || "$noctalia_skip" == false ]] && \
+       [[ "$package" != 'starship' || "$starship_skip" == false ]]; then
+      apply_packages+=("$package")
+    fi
   done
 else
-  declare -a apply_packages=("${packages[@]}")
+  declare -a apply_packages=()
+  for package in "${packages[@]}"; do
+    if [[ "$package" != 'noctalia' || "$noctalia_skip" == false ]] && \
+       [[ "$package" != 'starship' || "$starship_skip" == false ]]; then
+      apply_packages+=("$package")
+    fi
+  done
 fi
 
 if ((${#apply_packages[@]} > 0)); then
   stow "${stow_args[@]}" "${apply_packages[@]}"
 fi
 
+printf 'Stow complete.'
 if $bash_skip; then
-  printf 'Stow complete; Bash was skipped. Noctalia configuration was not changed.\n'
-else
-  printf 'Stow complete. Noctalia configuration was not changed.\n'
+  printf ' Bash was skipped.'
 fi
+if $noctalia_skip; then
+  printf ' Noctalia was skipped.'
+fi
+if $starship_skip; then
+  printf ' Starship was skipped.'
+fi
+printf '\n'

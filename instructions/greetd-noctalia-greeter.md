@@ -3,9 +3,10 @@
 ## Scope
 
 This document defines the login path for the EndeavourOS system. It is an
-installation and validation procedure; the target has been built and the
-direct Hyprland session has been validated, while greetd activation remains a
-separate final test.
+installation and validation procedure. The audited target has been built, the
+direct Hyprland session has been validated, and the greetd login path is active.
+On a fresh installation, treat activation as a separate final test after the
+checks below.
 
 The target login stack is:
 
@@ -144,6 +145,17 @@ TTY rather than from the active manually launched Hyprland session:
 cd ~/src/deomarchyfy
 ./scripts/05-configure-greetd.sh --enable
 ```
+
+After the first successful login, run the read-only repository verification from
+inside the graphical session:
+
+```bash
+./scripts/06-verify-setup.sh
+```
+
+Add `--zram`, `--ssh`, or `--accountsservice` when those options were selected
+for the target. On the audited target, greetd is already enabled and active, so
+do not rerun `--enable` merely to repeat the checks.
 
 Do not activate greetd on the existing Omarchy installation as part of this
 project. It belongs to the new EndeavourOS system.

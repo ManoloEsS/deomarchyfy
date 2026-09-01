@@ -159,14 +159,15 @@ Noctalia loads handwritten `*.toml` files from the configuration directory in
 alphabetical order, then applies GUI-managed state last. The state file can
 therefore override a value in the Stow-managed configuration.
 
-The future Stow package should contain only reviewed handwritten files, for
-example:
+The repository Stow package contains only reviewed handwritten files:
 
 ```text
 dotfiles/noctalia/.config/noctalia/
 ```
 
-Do not Stow Noctalia's runtime state, generated plugin files, downloaded
+The current `config.toml` disables Noctalia shell animations so panel and tile
+transitions do not add delay to the direct Hyprland workflow. Do not Stow
+Noctalia's GUI-managed state, runtime state, generated plugin files, downloaded
 catalogs, encrypted caches, calendar credentials, or storage keys. Use
 `noctalia config validate` before applying a curated configuration, and use
 `noctalia config export` when recording the effective configuration for review.

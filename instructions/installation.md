@@ -6,9 +6,9 @@ This is the end-to-end procedure for a clean EndeavourOS installation. It
 separates work performed by the EndeavourOS installer, normal post-install
 administration, and this repository's user configuration.
 
-Noctalia configuration is intentionally manual. The Stow script does not touch
-Noctalia's handwritten configuration, generated state, plugins, or Greeter
-state.
+The repository manages reviewed handwritten Noctalia configuration through GNU
+Stow. GUI-managed Noctalia state, generated files, plugins, encrypted storage,
+and Greeter state remain outside Stow.
 
 The intended session path is:
 
@@ -399,7 +399,7 @@ cd ~/src/deomarchyfy
 The repository currently contains these Stow packages:
 
 ```text
-bash ghostty herdr hyprland tmux
+bash ghostty herdr hyprland noctalia starship tmux
 ```
 
 Before applying them, inspect and preserve any existing files that would
@@ -429,21 +429,23 @@ Use `--restow` after changing package contents or removing a managed file:
 ```
 
 The script manages only user files under `$HOME`. It refuses root execution,
-does not use `sudo`, does not fold whole directories into repository symlinks,
-and does not manage Noctalia. Existing Bash files are
-handled safely: identical files are backed up automatically, while customized
-files are preserved and the Bash package is skipped without aborting the other
-packages. If an older run folded `.local` into the repository, the script moves
-runtime `share` and `state` data back under `$HOME` before restowing. Unrelated
-conflicts still stop the run. Keep machine-specific files such as
-`/etc/greetd/config.toml` outside Stow.
+does not use `sudo`, and does not fold whole directories into repository
+symlinks. Existing Bash, Starship, and Noctalia files are handled safely:
+identical files are backed up automatically, customized files are preserved and
+that package is skipped, and explicit `--replace-bash`, `--replace-starship`, or
+`--replace-noctalia` options are required to replace customized files. If an
+older run folded `.local` into the repository, the script moves runtime `share`
+and `state` data back under `$HOME` before restowing. Unrelated conflicts still
+stop the run. Keep machine-specific files such as `/etc/greetd/config.toml` and
+Noctalia's GUI-managed state outside Stow.
 
 Validate the links and the applications:
 
 ```bash
 ./scripts/03-stow-configs.sh --dry-run
-command -v ghostty herdr jj nvim tmux
+command -v ghostty herdr jj nvim starship tmux
 test -f "$HOME/.config/hypr/hyprland.lua"
+test -f "$HOME/.config/noctalia/config.toml"
 ```
 
 Neovim is installed and selected as the default editor, but this repository
@@ -490,9 +492,11 @@ Ghostty surface's CWD without a Kitty remote-control socket or UWSM.
 
 ## Phase 6: Manual Noctalia and Greeter Setup
 
-Noctalia configuration is intentionally outside the automation. Start it with
-defaults, then configure its bar, launcher, notifications, lock, idle behavior,
-wallpaper, OSD, control center, and appearance manually.
+The reviewed handwritten Noctalia configuration is applied by the Stow package.
+Start Noctalia with that configuration, then configure its bar, launcher,
+notifications, lock, idle behavior, wallpaper, OSD, control center, and
+appearance manually. GUI-managed overrides remain in
+`~/.local/state/noctalia/settings.toml` and are not part of the repository.
 
 Install and configure Noctalia Greeter according to
 `instructions/greetd-noctalia-greeter.md`. That document covers the pinned
@@ -520,6 +524,19 @@ monitor. If the login path fails, use a TTY and inspect:
 sudo journalctl -u greetd -b
 sudo systemctl status greetd.service
 ```
+
+From the first successful graphical login, run the repository's read-only final
+verification. It checks the managed links, required commands, selected services,
+Hyprland configuration, Noctalia configuration, and greetd session discovery:
+
+```bash
+./scripts/06-verify-setup.sh
+```
+
+Pass `--zram`, `--ssh`, and `--accountsservice` for options selected during
+installation. Use `--pre-greetd` if validating the direct session before the
+login service is enabled. The script never uses `sudo` and never changes files,
+services, or Noctalia state.
 
 ## Phase 7: Identity, Defaults, and Recovery
 
@@ -554,7 +571,10 @@ change.
 Run the checks below after the corresponding phase:
 
 ```bash
-command -v ghostty eos-hwtool herdr jj nvim tmux
+command -v ghostty jj nvim tmux
+command -v eos-hwtool || true
+command -v herdr || true
+command -v opencode || true
 systemctl is-enabled NetworkManager.service
 systemctl is-active firewalld.service
 systemctl is-active power-profiles-daemon.service

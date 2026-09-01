@@ -38,29 +38,23 @@ required system setup script.
 
 ## Prerequisites
 
-The following command is for the target EndeavourOS installation, not the
-current workstation:
+Run the Greeter installer from this repository on the target EndeavourOS
+installation. It installs the build dependencies, checks out the pinned source,
+builds it, installs its assets, and runs the upstream system setup script:
 
 ```bash
-sudo pacman -S --needed \
-  greetd dbus \
-  meson gcc just \
-  wayland wayland-protocols wlroots0.20 \
-  libglvnd freetype2 fontconfig \
-  cairo pango harfbuzz \
-  libxkbcommon glib2 \
-  tomlplusplus nlohmann-json stb \
-  libwebp librsvg \
-  polkit
+cd ~/src/deomarchyfy
+./scripts/04-install-noctalia-greeter.sh
 ```
 
-Noctalia v5 itself should be installed separately from the Arch `extra`
-repository. `accountsservice` is optional and should be added if user avatars
-are wanted in the Greeter:
+Noctalia v5 is installed by `01-install-packages.sh` from the Arch `extra`
+repository. If the Greeter installer is being used independently, ensure
+Noctalia is installed before testing the session. `accountsservice` is optional
+and should be added if user avatars are wanted in the Greeter:
 
 ```bash
 sudo pacman -S --needed noctalia accountsservice
-sudo systemctl enable --now accounts-daemon.service
+./scripts/02-enable-services.sh --accountsservice
 ```
 
 The Hyprland session and its Wayland session entry must be installed before
@@ -70,19 +64,13 @@ it should not wrap Hyprland in another session manager. Follow
 
 ## Build From Source
 
-Use the pinned tag identified above. The repository is buildable with Meson and
-`just`:
+The installer script uses the pinned tag identified above. To rerun the build,
+use the same repository script rather than manually mixing package and source
+installations:
 
 ```bash
-mkdir -p ~/src
-git clone --branch v1.3.0 --depth 1 \
-  https://github.com/noctalia-dev/noctalia-greeter.git \
-  ~/src/noctalia-greeter
-cd ~/src/noctalia-greeter
-just configure-release
-just build-release
-sudo meson install -C build-release
-sudo ./scripts/setup_greeter_system.sh
+cd ~/src/deomarchyfy
+./scripts/04-install-noctalia-greeter.sh --skip-deps
 ```
 
 The setup script creates or prepares `/var/lib/noctalia-greeter/` and prints a
@@ -105,19 +93,24 @@ installation.
 
 Create `/etc/greetd/config.toml` as a root-owned machine configuration. Do not
 put this file in the user Stow packages because it contains the installed path,
-the system Greeter account, and machine-specific session choices.
+the system Greeter account, and machine-specific session choices. The guarded
+repository script discovers the installed wrapper and prints the proposed
+configuration:
 
-Start with the smallest configuration, replacing the command path with the
-result of `command -v noctalia-greeter-session`:
-
-```toml
-[default_session]
-command = "/path/to/noctalia-greeter-session"
-user = "greeter"
+```bash
+cd ~/src/deomarchyfy
+./scripts/05-configure-greetd.sh --dry-run
 ```
 
-The upstream setup script prints the exact block for the installed path. Use
-that output when it differs from the example above.
+After reviewing the output, write the configuration explicitly:
+
+```bash
+./scripts/05-configure-greetd.sh --write
+```
+
+If `/etc/greetd/config.toml` already contains a configuration, the script
+refuses to replace it unless `--replace` is supplied. It creates a timestamped
+backup before replacement.
 
 Do not add a forced `--session` argument initially. Let the Greeter discover
 the installed Wayland sessions and confirm the exact session name first:
@@ -142,10 +135,12 @@ Before enabling greetd:
   executable.
 - Check the `greetd` configuration and installed paths one more time.
 
-Only after those checks should greetd be enabled:
+Only after those checks should greetd be enabled. Run this from a recovery-ready
+TTY rather than from the active manually launched Hyprland session:
 
 ```bash
-sudo systemctl enable --now greetd.service
+cd ~/src/deomarchyfy
+./scripts/05-configure-greetd.sh --enable
 ```
 
 Do not activate greetd on the existing Omarchy installation as part of this

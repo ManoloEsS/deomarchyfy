@@ -225,25 +225,16 @@ system. Review the transaction before accepting it.
 
 ```bash
 sudo pacman -Syu
-sudo pacman -S --needed git stow
+sudo pacman -S --needed git
+mkdir -p ~/src
+git clone <repository-url> ~/src/deomarchyfy
+cd ~/src/deomarchyfy
+./scripts/01-install-packages.sh --no-upgrade
 ```
 
-Install the official package inventory from `packages.md`:
-
-```bash
-sudo pacman -S --needed \
-  base-devel bluez bluez-utils ca-certificates curl dbus dracut firewalld \
-  bash-completion bat docker eza firefox fzf git glances ghostty greetd \
-  hyprland inotify-tools jujutsu mise neovim networkmanager noctalia tailscale \
-  less nautilus openssh pipewire pipewire-alsa pipewire-jack pipewire-pulse \
-  polkit power-profiles-daemon python-gobject rsync starship stow tmux upower \
-  wireplumber ttf-jetbrains-mono-nerd xdg-desktop-portal \
-  xdg-desktop-portal-hyprland xdg-utils zram-generator zoxide
-```
-
-Omit packages already provided by the selected EndeavourOS profile. `--needed`
-keeps installed packages from being reinstalled. Recheck package names before
-running this command because Arch repositories and profiles change.
+`01-install-packages.sh` uses `--needed`, so packages already provided by the
+selected EndeavourOS profile are not reinstalled. Recheck package names before
+running it because Arch repositories and profiles change.
 
 Install AUR packages only after the official package update is complete and an
 AUR helper is available:
@@ -279,24 +270,61 @@ wpctl status
 nmcli general status
 ```
 
+### zram
+
+The installer choice was no disk swap. Install the generator and configure one
+compressed RAM swap device instead:
+
+```bash
+sudo pacman -S --needed zram-generator
+sudo nano /etc/systemd/zram-generator.conf
+```
+
+Use this configuration:
+
+```ini
+[zram0]
+zram-size = ram
+compression-algorithm = zstd
+```
+
+The zram units are generated during boot. Reboot after saving the configuration
+rather than trying to enable the generated setup service permanently:
+
+```bash
+sudo reboot
+```
+
+After logging back in, verify the device:
+
+```bash
+swapon --show
+zramctl
+```
+
 ### Services
 
-Enable only services that are installed and needed. NetworkManager is normally
-already enabled by EndeavourOS; repeating `enable --now` is harmless.
+The repository was cloned during Phase 2. Run the numbered service script rather
+than maintaining a second list of `systemctl` commands. Its default action
+enables only the safe core services and sets the Firewalld default zone to
+`home`:
 
 ```bash
-sudo systemctl enable --now NetworkManager.service
-sudo systemctl enable --now firewalld.service
-sudo systemctl enable --now power-profiles-daemon.service
-sudo systemctl enable --now sshd.service
-sudo systemctl enable --now tailscaled.service
+./scripts/02-enable-services.sh
 ```
 
-Enable Bluetooth only if it is needed:
+The script does not enable `greetd`. Opt into additional services explicitly:
 
 ```bash
-sudo systemctl enable --now bluetooth.service
+./scripts/02-enable-services.sh --ssh --tailscale --bluetooth
+./scripts/02-enable-services.sh --docker
+./scripts/02-enable-services.sh --accountsservice
 ```
+
+The `--ssh` option refuses to start `sshd` until the user's
+`~/.ssh/authorized_keys` contains a key and then adds SSH to the Firewalld
+`home` zone. Tailscale authentication remains a separate `sudo tailscale up`
+step. Docker adds the user to a root-equivalent group and requires a new login.
 
 PipeWire and WirePlumber belong to the user session. Do not create duplicate
 system services:
@@ -305,15 +333,7 @@ system services:
 systemctl --user status pipewire pipewire-pulse wireplumber
 ```
 
-Docker is optional. Its group grants root-equivalent control over the host:
-
-```bash
-sudo systemctl enable --now docker.service
-sudo usermod -aG docker "$USER"
-```
-
-Log out and back in after the group change. Tailscale authentication is a
-separate step after networking is working:
+Tailscale authentication is a separate step after networking is working:
 
 ```bash
 sudo tailscale up
@@ -328,20 +348,17 @@ on a trusted home network. Services are still allow-listed rather than opened
 automatically:
 
 ```bash
-sudo firewall-cmd --set-default-zone=home
 firewall-cmd --get-default-zone
 firewall-cmd --get-active-zones
 firewall-cmd --list-all --zone=home
 ```
 
 SSH is intentionally enabled in this setup. Before enabling remote access,
-install the user's public key in `~/.ssh/authorized_keys`. Then start `sshd`,
-allow the service through firewalld, and verify key-based login from a second
-machine:
+install the user's public key in `~/.ssh/authorized_keys`, then run the service
+script with `--ssh`:
 
 ```bash
-sudo firewall-cmd --permanent --zone=home --add-service=ssh
-sudo firewall-cmd --reload
+./scripts/02-enable-services.sh --ssh
 firewall-cmd --list-services --zone=home
 ```
 
@@ -365,11 +382,9 @@ portal backend after testing the generic and Hyprland backends.
 
 ## Phase 4: User Configuration
 
-Clone this repository as the normal user and enter its directory:
+The repository was cloned during Phase 2. Enter its directory as the normal user:
 
 ```bash
-mkdir -p ~/src
-git clone <repository-url> ~/src/deomarchyfy
 cd ~/src/deomarchyfy
 ```
 
@@ -380,37 +395,40 @@ bash ghostty herdr hyprland tmux
 ```
 
 Before applying them, inspect and preserve any existing files that would
-conflict. GNU Stow intentionally refuses to overwrite unrelated files. Do not
-use `stow --adopt` here; it changes the repository from the target machine.
+conflict. The numbered Stow script handles Bash specially: identical default
+files are backed up automatically, customized Bash files are preserved and the
+Bash package is skipped, and unrelated conflicts still stop the run. Do not use
+`stow --adopt` here; it changes the repository from the target machine.
 
 Run the safe preflight first:
 
 ```bash
-./scripts/stow-configs.sh --dry-run
+./scripts/03-stow-configs.sh --dry-run
 ```
 
 If the output contains no unexpected conflicts, apply the packages:
 
 ```bash
-./scripts/stow-configs.sh
+./scripts/03-stow-configs.sh
 ```
 
 Use `--restow` after changing package contents or removing a managed file:
 
 ```bash
-./scripts/stow-configs.sh --restow
+./scripts/03-stow-configs.sh --restow
 ```
 
 The script manages only user files under `$HOME`. It refuses root execution,
-does not use `sudo`, and does not manage Noctalia. Move conflicting files to a
-dated backup directory before rerunning the dry run. Keep machine-specific
-files such as `/etc/greetd/config.toml` outside Stow.
+does not use `sudo`, and does not manage Noctalia. Existing Bash files are
+handled safely: identical files are backed up automatically, while customized
+files are preserved and the Bash package is skipped without aborting the other
+packages. Unrelated conflicts still stop the run. Keep machine-specific files
+such as `/etc/greetd/config.toml` outside Stow.
 
 Validate the links and the applications:
 
 ```bash
-stow --dir=dotfiles --target="$HOME" --simulate --verbose=1 \
-  bash ghostty herdr hyprland tmux
+./scripts/03-stow-configs.sh --dry-run
 command -v ghostty herdr jj nvim tmux
 test -f "$HOME/.config/hypr/hyprland.lua"
 ```
@@ -434,6 +452,14 @@ UWSM, a second bar, a second notification daemon, or a second launcher.
 The current Hyprland configuration starts Noctalia once through its compositor
 startup hook. Noctalia must not also be started from Bash, greetd, or a user
 service.
+
+Validate the Noctalia launcher from a terminal before relying on its keybinding:
+
+```bash
+noctalia msg panel-toggle launcher
+```
+
+`SUPER + SPACE` uses the same Noctalia v5 `panel-toggle launcher` action.
 
 ### Terminal Working Directory
 
@@ -471,7 +497,7 @@ Before enabling greetd:
 Enable greetd only after those checks:
 
 ```bash
-sudo systemctl enable --now greetd.service
+./scripts/05-configure-greetd.sh --enable
 ```
 
 Test login, logout, failed authentication, reboot, power actions, and a second

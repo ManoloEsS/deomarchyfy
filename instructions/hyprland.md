@@ -135,6 +135,15 @@ The required order is:
 Do not start Noctalia both from Hyprland and from a user service. One startup
 owner prevents duplicate bars, notification daemons, and panel surfaces.
 
+The application launcher is opened through Noctalia's v5 IPC command:
+
+```bash
+noctalia msg panel-toggle launcher
+```
+
+The Hyprland `SUPER + SPACE` binding uses this command. Do not use the older
+`noctalia msg launcher toggle` form.
+
 ## Environment Boundaries
 
 The direct session relies on greetd, PAM, the selected Wayland desktop entry,
@@ -183,6 +192,7 @@ configuration work will validate and document:
 - Noctalia autostart and IPC commands on the target system.
 - Layer rules for Noctalia surfaces.
 - XWayland and portal behavior.
+- Noctalia v5 IPC actions, including the launcher panel toggle.
 
 The current Omarchy Hyprland files are reference material only. Do not copy
 Omarchy includes, generated state, wrappers, or paths into the new package.

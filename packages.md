@@ -127,23 +127,16 @@ Update the system before installing the selected packages:
 sudo pacman -Syu
 ```
 
-Install official repository packages with `pacman` first. Recheck package names
-and omit components already present in the selected EndeavourOS profile:
+Install official repository packages with the repository script. It uses
+`--needed` and can be run again safely:
 
 ```bash
-sudo pacman -S --needed \
-  base-devel bluez bluez-utils ca-certificates curl dbus dracut firewalld \
-  bash-completion bat docker eza firefox fzf git glances ghostty greetd \
-  hyprland inotify-tools jujutsu mise neovim networkmanager noctalia tailscale \
-  less nautilus openssh \
-  pipewire pipewire-alsa pipewire-jack pipewire-pulse polkit \
-  power-profiles-daemon python-gobject rsync starship stow tmux upower wireplumber \
-  ttf-jetbrains-mono-nerd xdg-desktop-portal xdg-desktop-portal-hyprland \
-  xdg-utils zram-generator zoxide
+./scripts/01-install-packages.sh
 ```
 
-Install AUR packages only after `yay` is available, and verify the package
-source before confirming each build:
+Use `--no-upgrade` when the system was already updated separately. Install AUR
+packages only after `yay` is available, and verify the package source before
+confirming each build:
 
 ```bash
 yay -S spotify brave-bin zen-browser-bin
@@ -154,19 +147,25 @@ distribution channels can change independently of the Arch package database.
 
 ## Services
 
-Enable the services that are part of this workstation. Confirm the selected
-installation profile before enabling a service a second time:
+Run the service script as the normal user from the repository. Its default action
+enables NetworkManager, Firewalld with the `home` zone, power profiles, and the
+`fstrim.timer`:
 
 ```bash
-sudo systemctl enable --now firewalld.service
-sudo systemctl enable --now NetworkManager.service
-sudo systemctl enable --now bluetooth.service
-sudo systemctl enable --now power-profiles-daemon.service
-sudo systemctl enable --now sshd.service
-sudo systemctl enable --now tailscaled.service
+./scripts/02-enable-services.sh
 ```
 
-Authenticate and connect Tailscale separately after networking is working:
+Enable optional services explicitly:
+
+```bash
+./scripts/02-enable-services.sh --ssh --tailscale --bluetooth
+./scripts/02-enable-services.sh --docker
+./scripts/02-enable-services.sh --accountsservice
+```
+
+The `--ssh` option requires `~/.ssh/authorized_keys` to contain a public key and
+adds the SSH service to Firewalld's `home` zone. Tailscale authentication remains
+separate:
 
 ```bash
 sudo tailscale up
@@ -174,12 +173,30 @@ tailscale status
 tailscale ip
 ```
 
-PipeWire and WirePlumber are normally user-session services. Verify them from a
-graphical session rather than creating duplicate system services:
+The script intentionally does not enable `greetd`; it must be activated only
+after the Greeter and direct Hyprland session have been tested. PipeWire and
+WirePlumber are normally user-session services. Verify them from a graphical
+session rather than creating duplicate system services:
 
 ```bash
 systemctl --user status pipewire pipewire-pulse wireplumber
 ```
+
+## zram
+
+This setup does not use disk swap because hibernation is not required. Install
+`zram-generator`, then create `/etc/systemd/zram-generator.conf` with:
+
+```ini
+[zram0]
+zram-size = ram
+compression-algorithm = zstd
+```
+
+Reboot to let systemd generate and activate the zram swap unit. Verify it with
+`swapon --show` and `zramctl`. Do not enable
+`systemd-zram-setup@zram0.service` manually; it is generated from this
+configuration.
 
 ## Firewall
 
@@ -192,20 +209,16 @@ than opened automatically.
 Verify the active zone after enabling it:
 
 ```bash
-sudo firewall-cmd --set-default-zone=home
 firewall-cmd --get-default-zone
 firewall-cmd --get-active-zones
 firewall-cmd --list-all --zone=home
 ```
 
 SSH is intentionally enabled in this setup. Before enabling remote access,
-install the user's public key in `~/.ssh/authorized_keys`. Then start `sshd`,
-allow the service through firewalld, and verify key-based login from a second
-machine:
+install the user's public key in `~/.ssh/authorized_keys`, then run:
 
 ```bash
-sudo firewall-cmd --permanent --zone=home --add-service=ssh
-sudo firewall-cmd --reload
+./scripts/02-enable-services.sh --ssh
 firewall-cmd --list-services --zone=home
 ```
 
@@ -219,8 +232,7 @@ Docker is installed for the `docker` shell shortcut but its daemon does not need
 to run unless containers are being used:
 
 ```bash
-sudo systemctl enable --now docker.service
-sudo usermod -aG docker "$USER"
+./scripts/02-enable-services.sh --docker
 ```
 
 Log out and back in after adding the user to the `docker` group. The group grants
@@ -231,7 +243,7 @@ If user avatars are wanted in Noctalia Greeter, install and enable
 
 ```bash
 sudo pacman -S --needed accountsservice
-sudo systemctl enable --now accounts-daemon.service
+./scripts/02-enable-services.sh --accountsservice
 ```
 
 ## Default Editor

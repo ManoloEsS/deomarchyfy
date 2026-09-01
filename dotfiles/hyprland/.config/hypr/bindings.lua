@@ -90,7 +90,7 @@ hl.bind(main_mod .. " + C", send_shortcut_once({ "CTRL" }, "C"))
 hl.bind(main_mod .. " + V", send_shortcut_once({ "CTRL" }, "V"))
 hl.bind(main_mod .. " + X", send_shortcut_once({ "CTRL" }, "X"))
 hl.bind(main_mod .. " + E", hl.dsp.exec_cmd("nautilus --new-window"))
-hl.bind(main_mod .. " + SPACE", noctalia("launcher toggle"))
+hl.bind(main_mod .. " + SPACE", noctalia("panel-toggle launcher"))
 
 -- Focus, swap, and workspace navigation.
 local directions = {

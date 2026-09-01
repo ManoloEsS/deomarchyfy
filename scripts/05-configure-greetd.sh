@@ -106,6 +106,8 @@ sudo -v
 
 if $enable_greetd && ! $write_config; then
   [[ -s "$CONFIG_FILE" ]] || die "missing $CONFIG_FILE; run with --write first"
+  cmp -s "$CONFIG_FILE" <(printf '%s' "$config_contents") || die \
+    "$CONFIG_FILE differs from the reviewed configuration; use --replace --write first"
   printf 'Enabling greetd now; run this option from a recovery-ready TTY.\n'
   sudo systemctl enable --now greetd.service
   printf 'greetd enabled.\n'

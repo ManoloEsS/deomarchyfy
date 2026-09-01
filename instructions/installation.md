@@ -37,10 +37,11 @@ the installation. Installer labels and defaults can change.
   record it before confirming the installation.
 - Btrfs snapshots are not automatically backups. Choose and document a snapshot
   tool, schedule, retention policy, and restore procedure after the first boot.
-- The current Calamares source specifies LUKS1. Verify the encryption generation
-  shown by the installer before accepting it; do not assume the installer is
-  creating LUKS2. Use a manual, separately documented procedure if LUKS2 is a
-  hard requirement.
+- Encryption generation is installer-release dependent. Verify the LUKS
+  generation shown by the installer before accepting it rather than assuming
+  LUKS1 or LUKS2. The audited target currently uses LUKS2. Use a manual,
+  separately documented procedure if a specific generation is a hard
+  requirement.
 - Do not create a separate `/home` filesystem merely by habit. With Btrfs,
   choose subvolumes deliberately so root rollback does not unexpectedly include
   or exclude user data.

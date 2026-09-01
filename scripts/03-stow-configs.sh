@@ -86,8 +86,8 @@ migrate_folded_runtime_data() {
 
   target_local="$TARGET/.local"
   source_local="$DOTFILES/hyprland/.local"
-  [[ -L "$target_local" ]] || return
-  [[ "$(readlink -f "$target_local")" == "$(readlink -f "$source_local")" ]] || return
+  [[ -L "$target_local" ]] || return 0
+  [[ "$(readlink -f "$target_local")" == "$(readlink -f "$source_local")" ]] || return 0
 
   for relative in share state; do
     source_path="$source_local/$relative"
@@ -97,7 +97,9 @@ migrate_folded_runtime_data() {
     fi
   done
 
-  $dry_run && return
+  if $dry_run; then
+    return 0
+  fi
 
   # The old folded link makes runtime paths resolve into the repository. Remove
   # only that exact link before moving the generated directories back to $HOME.

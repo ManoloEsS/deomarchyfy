@@ -66,7 +66,12 @@ command -v stow >/dev/null 2>&1 || die 'GNU Stow is not installed; install the s
 [[ -d "$DOTFILES" ]] || die "dotfiles directory not found: $DOTFILES"
 [[ -d "$TARGET" ]] || die "target home directory not found: $TARGET"
 
-declare -a stow_args=(--dir "$DOTFILES" --target "$TARGET")
+declare -a stow_args=(
+  --dir "$DOTFILES"
+  --target "$TARGET"
+  --no-folding
+  --ignore '^\.local/(share|state)(/|$)'
+)
 if $restow; then
   stow_args+=(--restow)
 fi
@@ -75,6 +80,41 @@ for package in "${packages[@]}"; do
   [[ "$package" =~ ^[a-z0-9_-]+$ ]] || die "invalid package name: $package"
   [[ -d "$DOTFILES/$package" ]] || die "unknown Stow package: $package"
 done
+
+migrate_folded_runtime_data() {
+  local target_local source_local relative source_path target_path
+
+  target_local="$TARGET/.local"
+  source_local="$DOTFILES/hyprland/.local"
+  [[ -L "$target_local" ]] || return
+  [[ "$(readlink -f "$target_local")" == "$(readlink -f "$source_local")" ]] || return
+
+  for relative in share state; do
+    source_path="$source_local/$relative"
+    [[ -e "$source_path" ]] || continue
+    if $dry_run; then
+      printf 'Would move runtime data %s -> %s/%s\n' "$source_path" "$target_local" "$relative"
+    fi
+  done
+
+  $dry_run && return
+
+  # The old folded link makes runtime paths resolve into the repository. Remove
+  # only that exact link before moving the generated directories back to $HOME.
+  rm -- "$target_local"
+  mkdir -- "$target_local"
+  for relative in share state; do
+    source_path="$source_local/$relative"
+    target_path="$target_local/$relative"
+    [[ -e "$source_path" ]] || continue
+    [[ ! -e "$target_path" && ! -L "$target_path" ]] || die \
+      "cannot migrate runtime data; target already exists: $target_path"
+    mv -- "$source_path" "$target_path"
+  done
+  printf 'Moved folded runtime data out of the repository.\n'
+}
+
+migrate_folded_runtime_data
 
 inspect_bash_targets() {
   local file target source

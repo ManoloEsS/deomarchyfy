@@ -96,6 +96,11 @@ if $dry_run; then
   exit 0
 fi
 
+if ! $write_config && ! $enable_greetd; then
+  printf 'No files changed and greetd was not started. Use --write after reviewing the configuration.\n'
+  exit 0
+fi
+
 command -v sudo >/dev/null 2>&1 || die 'sudo is not installed'
 sudo -v
 

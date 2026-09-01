@@ -2,9 +2,10 @@
 
 ## Scope
 
-This document defines the planned login path for the EndeavourOS system. It is
-an installation and validation procedure; it has not been executed on the
-current Omarchy machine.
+This document defines the login path for the EndeavourOS system. It is an
+installation and validation procedure; the target has been built and the
+direct Hyprland session has been validated, while greetd activation remains a
+separate final test.
 
 The target login stack is:
 
@@ -95,7 +96,8 @@ Create `/etc/greetd/config.toml` as a root-owned machine configuration. Do not
 put this file in the user Stow packages because it contains the installed path,
 the system Greeter account, and machine-specific session choices. The guarded
 repository script discovers the installed wrapper and prints the proposed
-configuration:
+configuration. With no write or enable option it only validates and prints; it
+does not modify the system:
 
 ```bash
 cd ~/src/deomarchyfy

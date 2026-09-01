@@ -191,13 +191,12 @@ systemctl --user status pipewire pipewire-pulse wireplumber
 
 ## zram
 
-This setup does not use disk swap because hibernation is not required. Install
-`zram-generator`, then create `/etc/systemd/zram-generator.conf` with:
+This setup does not use disk swap because hibernation is not required. The
+service script can install the reviewed `/etc/systemd/zram-generator.conf`
+without replacing a different existing configuration:
 
-```ini
-[zram0]
-zram-size = ram
-compression-algorithm = zstd
+```bash
+./scripts/02-enable-services.sh --zram
 ```
 
 Reboot to let systemd generate and activate the zram swap unit. Verify it with

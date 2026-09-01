@@ -3,6 +3,11 @@ set -Eeuo pipefail
 
 readonly SCRIPT_NAME="${0##*/}"
 readonly USER_HOME="${HOME:?HOME must be set}"
+readonly ZRAM_CONFIG_FILE='/etc/systemd/zram-generator.conf'
+readonly ZRAM_CONFIG_CONTENT='[zram0]
+zram-size = ram
+compression-algorithm = zstd
+'
 
 dry_run=false
 enable_ssh=false
@@ -10,6 +15,7 @@ enable_tailscale=false
 enable_bluetooth=false
 enable_docker=false
 enable_accountsservice=false
+configure_zram=false
 ssh_key_file=''
 
 usage() {
@@ -23,6 +29,7 @@ usage() {
     '  --all              Also enable SSH, Tailscale, and Bluetooth' \
     '  --ssh              Enable sshd and allow SSH in firewalld home zone' \
     '  --ssh-key-file PATH  Install a public key before enabling SSH' \
+    '  --zram             Configure zram-generator for non-hibernating swap' \
     '  --tailscale        Enable tailscaled (authentication remains separate)' \
     '  --bluetooth        Enable bluetooth.service' \
     '  --docker           Enable Docker and add the user to the docker group' \
@@ -69,6 +76,25 @@ enable_optional_service() {
   fi
 }
 
+validate_ssh_key_file() {
+  local candidate
+
+  [[ -f "$ssh_key_file" ]] || die "SSH public-key file not found: $ssh_key_file"
+  command -v ssh-keygen >/dev/null 2>&1 || die 'ssh-keygen is not installed'
+
+  ssh_key_line=""
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" && "$candidate" != \#* ]] || continue
+    ssh_key_line="$candidate"
+    break
+  done <"$ssh_key_file"
+  [[ -n "$ssh_key_line" ]] || die "SSH public-key file is empty: $ssh_key_file"
+  [[ "$ssh_key_line" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-|sk-ssh-|sk-ecdsa-)[[:space:]] ]] || die \
+    "not an SSH public-key line: $ssh_key_file"
+  ssh-keygen -lf "$ssh_key_file" >/dev/null 2>&1 || die \
+    "not a valid SSH public-key file: $ssh_key_file"
+}
+
 if (( EUID == 0 )); then
   die 'run this script as the target user, not as root'
 fi
@@ -88,6 +114,9 @@ while (($# > 0)); do
       ssh_key_file="$2"
       enable_ssh=true
       shift
+      ;;
+    --zram)
+      configure_zram=true
       ;;
     --tailscale)
       enable_tailscale=true
@@ -119,6 +148,23 @@ command -v sudo >/dev/null 2>&1 || die 'sudo is not installed'
 command -v systemctl >/dev/null 2>&1 || die 'systemd is not available'
 command -v firewall-cmd >/dev/null 2>&1 || die 'firewalld is not installed'
 
+if [[ -n "$ssh_key_file" ]]; then
+  validate_ssh_key_file
+elif $enable_ssh && ! $dry_run; then
+  [[ -s "$USER_HOME/.ssh/authorized_keys" ]] || die \
+    'refusing to enable SSH until ~/.ssh/authorized_keys contains a key'
+fi
+
+if $configure_zram; then
+  command -v pacman >/dev/null 2>&1 || die 'pacman is not installed'
+  pacman -Q zram-generator >/dev/null 2>&1 || die \
+    'zram-generator is not installed; run scripts/01-install-packages.sh first'
+  if [[ -e "$ZRAM_CONFIG_FILE" ]]; then
+    cmp -s "$ZRAM_CONFIG_FILE" <(printf '%s' "$ZRAM_CONFIG_CONTENT") || die \
+      "$ZRAM_CONFIG_FILE already exists with different contents; review it before replacing"
+  fi
+fi
+
 if ! $dry_run; then
   sudo -v
 fi
@@ -130,23 +176,22 @@ enable_service fstrim.timer
 
 run_root firewall-cmd --set-default-zone=home
 
+if $configure_zram; then
+  if [[ -e "$ZRAM_CONFIG_FILE" ]]; then
+    printf '%s already matches the selected zram configuration.\n' "$ZRAM_CONFIG_FILE"
+  elif $dry_run; then
+    printf '+ install zram configuration at %s\n' "$ZRAM_CONFIG_FILE"
+  else
+    temporary_config="$(mktemp)"
+    printf '%s' "$ZRAM_CONFIG_CONTENT" >"$temporary_config"
+    run_root install -o root -g root -m 0644 "$temporary_config" "$ZRAM_CONFIG_FILE"
+    rm -- "$temporary_config"
+    printf 'Wrote %s; reboot to activate generated zram swap.\n' "$ZRAM_CONFIG_FILE"
+  fi
+fi
+
 if $enable_ssh; then
   if [[ -n "$ssh_key_file" ]]; then
-    [[ -f "$ssh_key_file" ]] || die "SSH public-key file not found: $ssh_key_file"
-    command -v ssh-keygen >/dev/null 2>&1 || die 'ssh-keygen is not installed'
-
-    ssh_key_line=""
-    while IFS= read -r candidate; do
-      [[ -n "$candidate" && "$candidate" != \#* ]] || continue
-      ssh_key_line="$candidate"
-      break
-    done <"$ssh_key_file"
-    [[ -n "$ssh_key_line" ]] || die "SSH public-key file is empty: $ssh_key_file"
-    [[ "$ssh_key_line" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-|sk-ssh-|sk-ecdsa-)[[:space:]] ]] || die \
-      "not an SSH public-key line: $ssh_key_file"
-    ssh-keygen -lf "$ssh_key_file" >/dev/null 2>&1 || die \
-      "not a valid SSH public-key file: $ssh_key_file"
-
     authorized_keys="$USER_HOME/.ssh/authorized_keys"
     if $dry_run; then
       printf '+ install public key into %s\n' "$authorized_keys"

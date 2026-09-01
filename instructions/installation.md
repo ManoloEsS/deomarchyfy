@@ -272,23 +272,19 @@ nmcli general status
 
 ### zram
 
-The installer choice was no disk swap. Install the generator and configure one
-compressed RAM swap device instead:
+The installer choice was no disk swap. Configure one compressed RAM swap device
+with the service script. It installs the generator configuration only when it is
+missing or already matches the reviewed contents; a different existing
+configuration is left untouched and reported for review:
 
 ```bash
-sudo pacman -S --needed zram-generator
-sudo nano /etc/systemd/zram-generator.conf
+./scripts/02-enable-services.sh --zram
 ```
 
-Use this configuration:
+This invocation also applies the core service baseline described below, so do
+not repeat the no-option service command when following this path.
 
-```ini
-[zram0]
-zram-size = ram
-compression-algorithm = zstd
-```
-
-The zram units are generated during boot. Reboot after saving the configuration
+The zram units are generated during boot. Reboot after the script completes
 rather than trying to enable the generated setup service permanently:
 
 ```bash
@@ -305,9 +301,9 @@ zramctl
 ### Services
 
 The repository was cloned during Phase 2. Run the numbered service script rather
-than maintaining a second list of `systemctl` commands. Its default action
-enables only the safe core services and sets the Firewalld default zone to
-`home`:
+than maintaining a second list of `systemctl` commands. If zram was not
+configured with the command above, its default action enables only the safe core
+services and sets the Firewalld default zone to `home`:
 
 ```bash
 ./scripts/02-enable-services.sh
@@ -426,11 +422,14 @@ Use `--restow` after changing package contents or removing a managed file:
 ```
 
 The script manages only user files under `$HOME`. It refuses root execution,
-does not use `sudo`, and does not manage Noctalia. Existing Bash files are
+does not use `sudo`, does not fold whole directories into repository symlinks,
+and does not manage Noctalia. Existing Bash files are
 handled safely: identical files are backed up automatically, while customized
 files are preserved and the Bash package is skipped without aborting the other
-packages. Unrelated conflicts still stop the run. Keep machine-specific files
-such as `/etc/greetd/config.toml` outside Stow.
+packages. If an older run folded `.local` into the repository, the script moves
+runtime `share` and `state` data back under `$HOME` before restowing. Unrelated
+conflicts still stop the run. Keep machine-specific files such as
+`/etc/greetd/config.toml` outside Stow.
 
 Validate the links and the applications:
 

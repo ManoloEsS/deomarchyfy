@@ -29,7 +29,8 @@ dotfiles/ghostty/   GNU Stow package for Ghostty configuration
 Run the numbered scripts in this order:
 
 1. `scripts/01-install-packages.sh` installs official packages.
-2. `scripts/02-enable-services.sh` enables the safe system-service baseline.
+2. `scripts/02-enable-services.sh` enables the safe system-service baseline and
+   can configure zram and explicitly selected optional services.
 3. `scripts/03-stow-configs.sh` applies user configuration and handles Bash conflicts.
 4. `scripts/04-install-noctalia-greeter.sh` builds and installs the pinned Greeter.
 5. `scripts/05-configure-greetd.sh` writes and optionally activates `greetd`.
@@ -46,7 +47,8 @@ are documented in `OS.md`, `shell.md`, `instructions/hyprland.md`, and
 dotfiles, reviewed keybindings, package inventory, Bash settings, tmux config,
 Herdr config, and Ghostty config are present. The end-to-end installation
 procedure is in `instructions/installation.md`; the numbered scripts install
-packages, manage services, apply user packages, and configure the login path.
-They intentionally exclude Noctalia configuration and automatic greetd
-activation. Installation and runtime behavior still need validation on the
-target EndeavourOS system.
+packages, configure zram and services, apply user packages, and configure the
+login path. They intentionally exclude Noctalia configuration and automatic
+greetd activation. The target EndeavourOS system has been validated through
+the direct Hyprland session; greetd remains disabled pending final login-path
+testing.

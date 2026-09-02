@@ -548,8 +548,10 @@ ownership, and greetd session discovery:
 
 Pass `--zram`, `--ssh`, and `--accountsservice` for options selected during
 installation. Use `--pre-greetd` if validating the direct session before the
-login service is enabled. The script never uses `sudo` and never changes files,
-services, or Noctalia state.
+login service is enabled. The script never changes files, services, or Noctalia
+state. When checking a protected firewalld rule, it uses only a cached,
+noninteractive `sudo -n` query; run `sudo -v` first if it reports that the rule
+could not be queried.
 
 ## Phase 7: Identity, Defaults, and Recovery
 

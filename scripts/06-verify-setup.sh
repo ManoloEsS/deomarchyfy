@@ -97,6 +97,30 @@ check_firewalld_zone() {
   fi
 }
 
+check_firewalld_service() {
+  local service="$1"
+  local privileged_query=false
+
+  if firewall-cmd --zone=home --query-service="$service" >/dev/null 2>&1; then
+    pass "$service is allowed in firewalld home zone"
+    return
+  fi
+
+  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+    privileged_query=true
+  fi
+
+  if $privileged_query; then
+    if sudo -n firewall-cmd --zone=home --query-service="$service" >/dev/null 2>&1; then
+      pass "$service is allowed in firewalld home zone"
+    else
+      fail "$service is not allowed in firewalld home zone"
+    fi
+  else
+    warn "could not query the firewalld $service rule without sudo; run 'sudo -v' and rerun verification"
+  fi
+}
+
 check_hyprland_runtime() {
   local output
   local noctalia_count
@@ -303,11 +327,7 @@ fi
 
 if $require_ssh; then
   check_service sshd.service
-  if firewall-cmd --zone=home --query-service=ssh >/dev/null 2>&1; then
-    pass 'SSH is allowed in firewalld home zone'
-  else
-    fail 'SSH is not allowed in firewalld home zone'
-  fi
+  check_firewalld_service ssh
   if [[ -s "$TARGET/.ssh/authorized_keys" ]]; then
     pass 'SSH authorized_keys contains a key'
   else

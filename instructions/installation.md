@@ -18,6 +18,8 @@ greetd -> Noctalia Greeter -> direct Hyprland session -> Noctalia Shell
 
 Read `OS.md`, `packages.md`, `instructions/hyprland.md`, and
 `instructions/greetd-noctalia-greeter.md` before changing the target system.
+Use `instructions/noctalia-runtime.md` for the manual desktop runtime
+installation and behavior checks.
 
 ## Phase 1: Installer Decisions
 
@@ -494,9 +496,19 @@ Ghostty surface's CWD without a Kitty remote-control socket or UWSM.
 
 The reviewed handwritten Noctalia configuration is applied by the Stow package.
 Start Noctalia with that configuration, then configure its bar, launcher,
-notifications, lock, idle behavior, wallpaper, OSD, control center, and
-appearance manually. GUI-managed overrides remain in
+notifications, wallpaper, OSD, control center, and appearance manually.
+Noctalia provides active-session locking and idle behavior through the reviewed
+`[lockscreen]`, `[idle.behavior.lock]`, and `[idle.behavior.screen-off]` settings.
+GUI-managed overrides remain in
 `~/.local/state/noctalia/settings.toml` and are not part of the repository.
+Because that state loads after the Stow-managed file, confirm in Noctalia's
+settings that its lock screen and lock/screen-off idle behaviors are enabled
+after the first start.
+
+Follow `instructions/noctalia-runtime.md` before relying on the keybindings. It
+contains the package, effective-configuration, IPC, lock, idle, wake, suspend,
+and recovery checks. Do not skip the effective configuration check: GUI-managed
+Noctalia state can override the Stow file.
 
 Install and configure Noctalia Greeter according to
 `instructions/greetd-noctalia-greeter.md`. That document covers the pinned
@@ -527,7 +539,8 @@ sudo systemctl status greetd.service
 
 From the first successful graphical login, run the repository's read-only final
 verification. It checks the managed links, required commands, selected services,
-Hyprland configuration, Noctalia configuration, and greetd session discovery:
+Hyprland configuration, Noctalia configuration including effective lock/idle
+ownership, and greetd session discovery:
 
 ```bash
 ./scripts/06-verify-setup.sh
@@ -590,6 +603,8 @@ Then verify behavior, not only command presence:
 
 - A direct Hyprland session starts without UWSM.
 - Noctalia starts exactly once and owns its selected shell responsibilities.
+- Noctalia's lock screen can authenticate, and idle lock and monitor wake work
+  without a second lock or idle daemon.
 - Audio playback and microphone capture work.
 - Network, Bluetooth, suspend, display outputs, and clipboard work.
 - TTY access remains available.

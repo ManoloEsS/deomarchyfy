@@ -1,2 +1,15 @@
 [shell.animation]
 enabled = false
+
+[lockscreen]
+enabled = true
+
+[idle.behavior.lock]
+enabled = true
+timeout = 300
+action = "lock"
+
+[idle.behavior.screen-off]
+enabled = true
+timeout = 330
+action = "screen_off"

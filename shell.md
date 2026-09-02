@@ -23,8 +23,8 @@ its documented integrations:
 | --- | --- | --- |
 | Bar | Per-monitor bars with configurable placement, spacing, widgets, styling, auto-hide, and workspace display | Core |
 | Notifications | Freedesktop notification daemon, toast display, notification history, filtering, sounds, and Do Not Disturb | Core |
-| Lock screen | Session lock surface, password entry, lock actions, and lock-related UI | Core |
-| Idle handling | Named idle behaviors for lock, screen-off, suspend, lock-and-suspend, or custom commands | Core |
+| Lock screen | Built-in session lock surface and password authentication | Core |
+| Idle handling | Named lock and screen-off behaviors with optional suspend or custom actions | Core |
 | Night light | Scheduled or forced color-temperature changes through the Wayland `wlr-gamma-control` protocol | Core |
 | Launcher | Application search and launch, calculator, emoji, wallpaper, session actions, open-window search, dmenu mode, and plugin providers | Core |
 | Control Center | Home, media, audio, monitor brightness, system, network, Bluetooth, weather, calendar, notifications, screen time, and power tabs | Core, with optional tabs |
@@ -125,7 +125,7 @@ usable session:
   controls.
 - Application launcher.
 - Notifications and Do Not Disturb.
-- Lock screen and explicit idle policies.
+- Noctalia lock screen and explicit lock/screen-off idle policies.
 - Night light through Noctalia's gamma-control integration.
 - Wallpaper management.
 - Volume, microphone, brightness, and session OSDs.
@@ -165,12 +165,16 @@ The repository Stow package contains only reviewed handwritten files:
 dotfiles/noctalia/.config/noctalia/
 ```
 
-The current `config.toml` disables Noctalia shell animations so panel and tile
-transitions do not add delay to the direct Hyprland workflow. Do not Stow
-Noctalia's GUI-managed state, runtime state, generated plugin files, downloaded
-catalogs, encrypted caches, calendar credentials, or storage keys. Use
-`noctalia config validate` before applying a curated configuration, and use
+The current `config.toml` disables Noctalia shell animations and explicitly
+enables its lock screen plus lock and screen-off idle behaviors. Do not Stow
+Noctalia's GUI-managed state, runtime state, generated plugin files,
+downloaded catalogs, encrypted caches, calendar credentials, or storage keys.
+Use `noctalia config validate` before applying a curated configuration, and use
 `noctalia config export` when recording the effective configuration for review.
+Because GUI-managed state is loaded last, confirm that its lock-screen and idle
+behavior settings are also enabled on the target after the first Noctalia start.
+Use `instructions/noctalia-runtime.md` for the effective configuration check and
+the manual lock and idle tests.
 
 ## Avoid Duplicate Owners
 
@@ -180,7 +184,7 @@ Unless a later decision requires them, do not add:
 - Waybar alongside Noctalia's bar.
 - Mako or another notification daemon alongside Noctalia's notification daemon.
 - Walker, fuzzel, or another launcher alongside Noctalia's launcher.
-- `hyprlock` or `hypridle` alongside Noctalia's lock and idle behavior.
+- Hyprlock or Hypridle alongside Noctalia's lock and idle behavior.
 - `hyprsunset` alongside Noctalia's night light.
 - A second polkit authentication agent.
 - A separate dock when Noctalia's dock is enabled.

@@ -18,6 +18,7 @@ OS.md               Operating-system decision and boundaries
 shell.md            Noctalia shell decision and responsibilities
 packages.md         Baseline and personal package inventory
 instructions/       Installation and configuration steps
+instructions/noctalia-runtime.md  Manual Noctalia runtime runbook
 scripts/             Safe setup, package, and service automation
 dotfiles/bash/      GNU Stow package for Bash configuration
 dotfiles/hyprland/  GNU Stow package for Hyprland configuration
@@ -57,12 +58,15 @@ Herdr config, Ghostty config, Starship config, and the reviewed Noctalia config
 are present. The end-to-end installation
 procedure is in `instructions/installation.md`; the numbered scripts install
 packages, configure zram and services, apply user packages, and configure the
-login path. The final verification script intentionally performs checks only;
-it does not change Noctalia configuration or enable greetd. The audited target
-has a working direct Hyprland session and an active greetd -> Noctalia Greeter
--> Hyprland login path. Its Omarchy-style Hyprland compositor animations and
-separate Noctalia shell animation setting are documented in the relevant
-configuration guides.
+login path. Noctalia provides the shell, active-session lock, and idle profile;
+Noctalia Greeter remains the login interface. The final
+verification script intentionally performs checks only; it does not change
+Noctalia configuration or enable greetd. The audited target has a working direct
+Hyprland session and an active greetd -> Noctalia Greeter -> Hyprland login
+path. Its Omarchy-style Hyprland compositor animations and separate Noctalia
+shell animation setting are documented in the relevant configuration guides.
+Use `instructions/noctalia-runtime.md` for the manual install, ownership,
+keybinding, lock, idle, wake, suspend, and recovery checks.
 
 Run the final check from a terminal inside the graphical session after applying
 the selected service options:
@@ -75,3 +79,26 @@ Use `--pre-greetd` while validating the direct session before the login service
 is activated. Optional tools such as `eos-hwtool`, Herdr, and OpenCode are
 reported as warnings because they are installed outside the official package
 script.
+
+## Automation Boundary
+
+The numbered scripts automate the repeatable local work: official package
+installation, selected system services, safe Stow application, the pinned
+Noctalia Greeter build, guarded greetd preparation, and read-only verification.
+They intentionally keep safety gates around root-owned login configuration and
+service activation.
+
+The following remain explicit actions rather than unattended script steps:
+
+- EndeavourOS installer choices, disk layout, encryption, firmware, and GPU
+  decisions.
+- AUR and upstream application installation, including identity or credential
+  setup.
+- Noctalia GUI-managed state under `~/.local/state/noctalia/`.
+- Physical lock, authentication, idle, monitor wake, suspend, logout, and
+  recovery tests.
+
+No script modifies GUI-managed Noctalia state or enables `greetd` without an
+explicit command-line option. This prevents a repeatable setup run from
+silently replacing user choices or locking the machine out of its graphical
+session.

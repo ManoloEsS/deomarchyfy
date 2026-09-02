@@ -26,6 +26,9 @@ This document covers package installation and direct-session validation. It
 does not apply changes to the current Omarchy machine. The curated Hyprland
 dotfiles live in the project Stow package.
 
+Use `instructions/noctalia-runtime.md` for the complete manual procedure and
+behavior checklist for Noctalia and the reviewed keybindings.
+
 Use Hyprland's native Lua configuration for the curated setup. Hyprland 0.55+
 deprecated the classic `hyprland.conf` syntax in favor of Lua, so the Stow
 package uses `hyprland.lua` and modules beside it under `~/.config/hypr/`.
@@ -57,7 +60,7 @@ Do not add the following components at this stage:
 - Waybar, because Noctalia owns the bar.
 - Mako or another notification daemon, because Noctalia owns notifications.
 - Walker, fuzzel, or another launcher, because Noctalia owns the launcher.
-- `hyprlock` or `hypridle`, because Noctalia owns locking and idle behavior.
+- `hyprlock` and `hypridle`, because Noctalia owns the lock and idle behavior.
 - `hyprsunset`, because Noctalia owns night light.
 - `hyprshutdown`, unless a later recovery or shutdown requirement justifies it.
 
@@ -129,8 +132,8 @@ The required order is:
    session.
 3. Hyprland initializes monitors, input, and compositor state.
 4. Hyprland starts Noctalia once through compositor autostart.
-5. Noctalia provides the bar, launcher, notifications, lock, idle behavior,
-   wallpaper, OSD, and selected system controls.
+5. Noctalia provides the bar, launcher, notifications, lock screen, idle
+   behavior, wallpaper, OSD, and selected system controls.
 
 Do not start Noctalia both from Hyprland and from a user service. One startup
 owner prevents duplicate bars, notification daemons, and panel surfaces.
@@ -143,6 +146,42 @@ noctalia msg panel-toggle launcher
 
 The Hyprland `SUPER + SPACE` binding uses this command. Do not use the older
 `noctalia msg launcher toggle` form.
+
+## Noctalia Lock and Idle
+
+Noctalia owns the active-session lock surface, authentication, idle timing,
+monitor power, and the session lock actions. The reviewed configuration is part
+of the Noctalia Stow package:
+
+```text
+~/.config/noctalia/config.toml
+```
+
+The profile uses Noctalia's native actions without copying Omarchy wrappers,
+generated paths, or its separate terminal/tte screensaver:
+
+- `SUPER + CTRL + L` calls `noctalia msg session lock`.
+- `loginctl lock-session` uses Noctalia's session lock path.
+- Idle locking occurs after 300 seconds.
+- Monitors power off after 330 seconds and wake through Noctalia's `screen_off`
+  behavior.
+- `noctalia msg session lock-and-suspend` provides the explicit lock-before-sleep
+  action.
+
+The 150-second Omarchy terminal screensaver is intentionally not included. It
+depends on Omarchy's Alacritty and `tte` helpers and is separate from session
+locking. Add a portable screensaver only as a separate reviewed feature.
+
+Before relying on the profile, validate the installed commands and config links:
+
+```bash
+command -v noctalia
+test -f "$HOME/.config/noctalia/config.toml"
+```
+
+Follow the manual runbook for the manual lock, IPC, keybinding, idle, monitor
+wake, suspend, and TTY recovery tests. Do not start another lock screen or idle
+daemon alongside Noctalia.
 
 ## Environment Boundaries
 
@@ -192,7 +231,7 @@ configuration work will validate and document:
 - Noctalia autostart and IPC commands on the target system.
 - Layer rules for Noctalia surfaces.
 - XWayland and portal behavior.
-- Noctalia v5 IPC actions, including the launcher panel toggle.
+- Noctalia v5 IPC actions and keybindings, using the manual runtime runbook.
 
 ### Compositor Animation Profile
 

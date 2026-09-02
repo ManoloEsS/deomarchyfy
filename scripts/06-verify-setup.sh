@@ -133,6 +133,51 @@ check_hyprland_runtime() {
   fi
 }
 
+check_noctalia_lock_idle_settings() {
+  local exported
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    fail 'python3 is required to inspect Noctalia effective settings'
+    return
+  fi
+
+  if ! exported="$(noctalia config export merged 2>&1)"; then
+    printf '%s\n' "$exported" >&2
+    fail 'could not export the effective Noctalia configuration'
+    return
+  fi
+
+  if python3 -c '
+import sys
+import tomllib
+
+config = tomllib.loads(sys.stdin.read())
+paths = (
+    ("lockscreen", "enabled"),
+    ("idle", "behavior", "lock", "enabled"),
+    ("idle", "behavior", "screen-off", "enabled"),
+)
+disabled = []
+for path in paths:
+    value = config
+    for part in path:
+        if not isinstance(value, dict) or part not in value:
+            value = None
+            break
+        value = value[part]
+    if value is not True:
+        disabled.append(".".join(path))
+
+if disabled:
+    print("disabled or missing settings: " + ", ".join(disabled), file=sys.stderr)
+    raise SystemExit(1)
+' <<<"$exported"; then
+    pass 'Noctalia lock screen and lock/screen-off idle behaviors are enabled'
+  else
+    fail 'Noctalia effective configuration does not enable the lock and idle behaviors'
+  fi
+}
+
 check_greeter_path() {
   local config_file='/etc/greetd/config.toml'
   local session_command
@@ -296,6 +341,7 @@ if noctalia config validate >/dev/null 2>&1; then
 else
   fail 'Noctalia configuration validation failed'
 fi
+check_noctalia_lock_idle_settings
 
 if [[ -f /usr/share/wayland-sessions/hyprland.desktop ]]; then
   pass 'direct Hyprland Wayland session entry exists'

@@ -47,7 +47,7 @@ These packages support the chosen direct-session path:
 | Package | Purpose |
 | --- | --- |
 | `hyprland` | Wayland compositor and window manager |
-| `noctalia` | Desktop shell |
+| `noctalia` | Desktop shell, lock screen, idle behavior, and system controls |
 | `greetd` | Login service |
 | `dbus` | Session and system bus required by the greeter and desktop services |
 | `nautilus` | File manager launched by the Hyprland bindings |
@@ -61,7 +61,7 @@ These packages support the chosen direct-session path:
 | `polkit` | Privileged desktop authentication |
 | `power-profiles-daemon` | Power-profile integration |
 
-Noctalia owns the bar, launcher, notifications, lock screen, idle handling,
+Noctalia owns the bar, launcher, notifications, lock screen, idle behavior,
 night light, wallpaper, OSD, and control center. Do not add Waybar, Mako,
 Walker, fuzzel, hyprlock, hypridle, or hyprsunset for those responsibilities.
 

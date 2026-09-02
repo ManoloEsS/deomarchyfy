@@ -170,7 +170,10 @@ hl.bind(main_mod .. " + SLASH", scrolling_only("consume_or_expel prev"))
 -- Window state, aspect ratio, resize, mouse, and groups.
 hl.bind(main_mod .. " + T", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(main_mod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
-hl.bind(main_mod .. " + CTRL + F", hl.dsp.exec_cmd("hyprctl dispatch fullscreenstate 2 0"))
+hl.bind(main_mod .. " + CTRL + F", hl.dsp.window.fullscreen_state({
+  internal = 2,
+  client = 0,
+}))
 hl.bind(main_mod .. " + ALT + F", hl.dsp.window.fullscreen({ mode = "maximized" }))
 hl.bind(main_mod .. " + SHIFT + O", pop_window_out)
 hl.bind(main_mod .. " + CTRL + BACKSPACE", toggle_single_window_aspect_ratio)
@@ -229,13 +232,28 @@ hl.bind("SUPER + CTRL + C", noctalia("caffeine-toggle"))
 hl.bind("SUPER + CTRL + N", noctalia("nightlight-toggle"))
 hl.bind("SUPER + CTRL + L", noctalia("session lock"))
 
--- Reserved until the corresponding Noctalia panel/actions are configured:
--- SUPER + ESC: system panel
--- SUPER + CTRL + A/B/D/W/P/T: Noctalia panels
--- SUPER + CTRL + 1..9: Noctalia panel shortcuts
--- SUPER + ALT + SLASH: notification history
--- SUPER + ALT + PERIOD: clear active notification
--- SUPER + CTRL + V: Noctalia clipboard
--- SUPER + CTRL + SHIFT + S: Noctalia screenshot
--- SUPER + CTRL + M: Spotify media panel
+-- Noctalia shell and panel actions.
+hl.bind("ALT + TAB", noctalia("window-switcher"))
+hl.bind("SUPER + ESCAPE", noctalia("panel-toggle session"))
+hl.bind("XF86PowerOff", noctalia("panel-toggle session"), { locked = true })
+hl.bind("SUPER + SHIFT + SPACE", noctalia("bar-toggle"))
+hl.bind("SUPER + CTRL + SPACE", noctalia("panel-toggle wallpaper"))
+hl.bind("SUPER + CTRL + E", noctalia("panel-toggle launcher /emo"))
+hl.bind("SUPER + CTRL + Q", noctalia("panel-toggle launcher /calc"))
+hl.bind("SUPER + CTRL + A", noctalia("panel-toggle control-center audio"))
+hl.bind("SUPER + CTRL + B", noctalia("panel-toggle control-center bluetooth"))
+hl.bind("SUPER + CTRL + D", noctalia("panel-toggle control-center monitor"))
+hl.bind("SUPER + CTRL + M", noctalia("panel-toggle control-center media"))
+hl.bind("SUPER + CTRL + P", noctalia("panel-toggle control-center power"))
+hl.bind("SUPER + CTRL + T", noctalia("panel-toggle control-center system"))
+hl.bind("SUPER + CTRL + V", noctalia("panel-toggle clipboard"))
+hl.bind("SUPER + CTRL + W", noctalia("panel-toggle control-center network"))
+hl.bind("SUPER + CTRL + SHIFT + S", noctalia("screenshot-region"))
+
+-- Notification actions that do not displace workspace or layout bindings.
+hl.bind("SUPER + CTRL + comma", noctalia("notification-dnd-toggle"))
+hl.bind("SUPER + ALT + comma", noctalia("notification-invoke-latest"))
+hl.bind("SUPER + ALT + SLASH", noctalia("panel-toggle control-center notifications"))
+hl.bind("SUPER + ALT + PERIOD", noctalia("notification-clear-active"))
+
 -- SUPER + CTRL + ALT + SHIFT + SLASH: keybinding reference
